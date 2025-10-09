@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="vendwise"
+        android:label="Vendwise"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,9 +1,8 @@
-# Vendwise iOS Setup for iPhone 15 (iOS 18.7)
+# Vendwise iOS Setup (Example: iPhone 15 on iOS 18.7)
 
 ## 📱 Device Compatibility
-- **Target Device**: iPhone 15
-- **iOS Version**: 18.7
-- **Minimum iOS**: 15.0
+- **Recommended Test Device**: iPhone 15 (works with any modern iPhone)
+- **Supported iOS Versions**: 15.0 and newer
 - **Architecture**: ARM64
 
 ## 🛠️ Development Setup
@@ -11,10 +10,10 @@
 ### Prerequisites
 1. **Xcode 15.4+** (already installed ✅)
 2. **Flutter 3.35.5+** (already installed ✅)
-3. **iPhone 15** connected via USB or Wi-Fi
+3. **Any supported iPhone** connected via USB or Wi-Fi
 
 ### Quick Start
-1. **Connect your iPhone 15** to your Mac
+1. **Connect your iPhone** to your Mac
 2. **Trust the computer** on your iPhone when prompted
 3. **Enable Developer Mode** on your iPhone:
    - Go to Settings > Privacy & Security > Developer Mode
@@ -28,7 +27,7 @@
 2. Press `Cmd+Shift+P` and type "Flutter: Select Device"
 3. Choose your iPhone 15 from the list
 4. Press `F5` or use the "Run and Debug" panel
-5. Select "Debug iOS (iPhone 15)" configuration
+5. Select the matching "Debug iOS" configuration for your device
 
 ### Option 2: Using Terminal
 ```bash

@@ -1,6 +1,6 @@
 # Vendwise
 
-Flutter-based inventory and point-of-sale companion app.
+Flutter-based inventory and point-of-sale companion app for Android and iOS.
 
 ## Prerequisites
 
@@ -117,6 +117,8 @@ flutter run
 If Supabase initialization fails (e.g., missing keys or no network), the app gracefully falls back to the mock in-memory repository so you can continue development offline.
 
 For smoke-test scenarios on Android and iOS, follow `docs/device_checklist.md`.
+
+For end-to-end build and deployment commands (APK, AAB, iOS Archive, device install), see `docs/build_and_deploy.md`.
 
 ### Startup health checks
 
