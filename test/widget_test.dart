@@ -7,7 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vendwise/screens/splash_screen.dart';
+import 'package:vendwise/screens/auth/splash_screen.dart';
 
 void main() {
   testWidgets('Vendwise app smoke test', (WidgetTester tester) async {
@@ -16,10 +16,8 @@ void main() {
       MaterialApp(
         debugShowCheckedModeBanner: false,
         title: "Exploring Flutter UI Widgets",
-        theme: ThemeData(
-          fontFamily: 'Inter'
-        ),
-        home: Splashscreen(),
+        theme: ThemeData(fontFamily: 'Inter'),
+        home: const Splashscreen(),
       ),
     );
 
