@@ -7,6 +7,7 @@ import 'package:vendwise/screens/inventory/inventory_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/screens/products/update_product_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
@@ -85,6 +86,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
 
     try {
+      AppHaptics.mediumImpact();
       await appRepository.deleteProduct(target.id);
       await _loadProducts();
       if (!mounted) return;
@@ -123,6 +125,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     ? const Icon(Icons.check)
                     : null,
                 onTap: () {
+                  AppHaptics.selectionChanged();
                   Navigator.of(sheetContext).pop();
                   setState(() {
                     _selectedCategory = 'all';
@@ -137,6 +140,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ? const Icon(Icons.check)
                       : null,
                   onTap: () {
+                    AppHaptics.selectionChanged();
                     Navigator.of(sheetContext).pop();
                     setState(() {
                       _selectedCategory = category;
@@ -317,149 +321,187 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  Row productHeaderTop() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Products',
-          style: TextStyle(
-            fontFamily: "Inter",
-            color: Colors.black,
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(
-          height: 30,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF26347C),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(2.0),
-              child: TextButton(
-                onPressed: () async {
-                  final bool? refresh = await pushWithSlide<bool?>(
-                    context,
-                    const AddProductScreen(),
-                  );
+  Widget productHeaderTop() {
+    final addButton = _buildAddProductButton();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 400) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderTitle(),
+              const SizedBox(height: 8),
+              addButton,
+            ],
+          );
+        }
 
-                  if (refresh == true) {
-                    await _loadProducts();
-                  }
-                },
-                child: Text(
-                  'Add Product',
-                  style: TextStyle(
-                    fontFamily: "Inter",
-                    color: Colors.white,
-                    fontSize: 11.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: _buildHeaderTitle()),
+            const SizedBox(width: 12),
+            addButton,
+          ],
+        );
+      },
     );
   }
 
-  Row productHeaderBot() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 30,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF146533),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(1.0),
-              child: TextButton(
-                onPressed: _openCategorySheet,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _selectedCategory == 'all'
-                          ? 'ALL ITEMS'
-                          : _selectedCategory.toUpperCase(),
-                      style: TextStyle(
-                        fontFamily: "Inter",
-                        color: Colors.white,
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.arrow_drop_down, size: 24, color: Colors.black),
-                  ],
-                ),
+  Widget productHeaderBot() {
+    final categoryButton = _buildCategoryButton();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 480) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              categoryButton,
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 40,
+                width: double.infinity,
+                child: _buildSearchField(),
               ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            categoryButton,
+            const SizedBox(width: 12),
+            Expanded(child: SizedBox(height: 40, child: _buildSearchField())),
+          ],
+        );
+      },
+    );
+  }
+
+  Text _buildHeaderTitle() {
+    return const Text(
+      'Products',
+      style: TextStyle(
+        fontFamily: 'Inter',
+        color: Colors.black,
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildAddProductButton() {
+    return FilledButton.icon(
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text(
+        'Add Product',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF26347C),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: () async {
+        AppHaptics.lightImpact();
+        final bool? refresh = await pushWithSlide<bool?>(
+          context,
+          const AddProductScreen(),
+        );
+
+        if (refresh == true) {
+          AppHaptics.selectionChanged();
+          await _loadProducts();
+        }
+      },
+    );
+  }
+
+  Widget _buildCategoryButton() {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF146533),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+      onPressed: () {
+        AppHaptics.lightImpact();
+        _openCategorySheet();
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _selectedCategory == 'all'
+                ? 'ALL ITEMS'
+                : _selectedCategory.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 18,
+            color: Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: productsearch,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 10,
+          horizontal: 14,
         ),
-        Flexible(
-          child: SizedBox(
-            height: 30,
-            child: Container(
-              margin: EdgeInsets.only(left: 10, right: 10),
-              width: 180,
-              child: TextField(
-                controller: productsearch,
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 12,
-                  ),
-                  hintText: 'Search Product',
-                  hintStyle: TextStyle(
-                    color: Color.fromARGB(255, 173, 172, 172),
-                  ),
-                  suffixIcon: SizedBox(
-                    width: 50,
-                    child: IntrinsicHeight(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          VerticalDivider(
-                            color: Colors.black,
-                            thickness: 1,
-                            indent: 10,
-                            endIndent: 10,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(Icons.search),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchTerm = value;
-                  });
-                },
+        hintText: 'Search Product',
+        hintStyle: const TextStyle(color: Color.fromARGB(255, 173, 172, 172)),
+        suffixIcon: SizedBox(
+          width: 44,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: const [
+              VerticalDivider(
+                color: Colors.black54,
+                thickness: 1,
+                indent: 10,
+                endIndent: 10,
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Icon(Icons.search, size: 18),
+              ),
+            ],
           ),
         ),
-      ],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Colors.black54),
+        ),
+      ),
+      onChanged: (value) {
+        setState(() {
+          _searchTerm = value;
+        });
+      },
     );
   }
 
@@ -567,12 +609,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () async {
+                        AppHaptics.selectionChanged();
                         final bool? refresh = await pushWithSlide<bool?>(
                           context,
                           UpdateProductScreen(product: currentProduct),
                         );
 
                         if (refresh == true) {
+                          AppHaptics.selectionChanged();
                           await _loadProducts();
                         }
                       },
@@ -627,7 +671,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      onPressed: () => _confirmDeleteProduct(currentProduct),
+                      onPressed: () {
+                        AppHaptics.lightImpact();
+                        _confirmDeleteProduct(currentProduct);
+                      },
                       child: const Text(
                         'Delete Product',
                         style: TextStyle(

@@ -7,6 +7,8 @@ import 'package:vendwise/screens/inventory/inventory_screen.dart';
 import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class UpdateInventoryScreen extends StatefulWidget {
   const UpdateInventoryScreen({super.key, required this.inventory});
@@ -211,31 +213,21 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
   }
 
   void _onItemTapped(int index) {
+    AppHaptics.selectionChanged();
+    if (index == _selectedIndex) {
+      return;
+    }
+
     if (index == 0) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
+      pushWithSlide<void>(context, const DashboardScreen());
     } else if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const InventoryScreen()),
-      );
+      pushWithSlide<void>(context, const InventoryScreen());
     } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProductsScreen()),
-      );
+      pushWithSlide<void>(context, const ProductsScreen());
     } else if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TransactionScreen()),
-      );
+      pushWithSlide<void>(context, const TransactionScreen());
     } else if (index == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SalesReport()),
-      );
+      pushWithSlide<void>(context, const SalesReport());
     }
   }
 

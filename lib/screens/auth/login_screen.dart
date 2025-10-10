@@ -5,6 +5,8 @@ import 'package:vendwise/backend/bootstrap.dart';
 import 'package:vendwise/models/app_user.dart';
 import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
 import 'package:vendwise/screens/auth/sign_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -118,8 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      AppHaptics.mediumImpact();
+      pushReplacementWithSlide<void, void>(
+        context,
+        const DashboardScreen(),
       );
     } catch (error) {
       setState(() {
@@ -381,17 +385,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   TextButton(
                                     onPressed: () async {
+                                      AppHaptics.selectionChanged();
                                       final messenger = ScaffoldMessenger.of(
                                         context,
                                       );
                                       final created =
-                                          await Navigator.push<bool>(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const SignInScreen(),
-                                            ),
-                                          );
+                                          await pushWithSlide<bool?>(
+                                        context,
+                                        const SignInScreen(),
+                                      );
                                       if (!mounted) {
                                         return;
                                       }

@@ -1,5 +1,5 @@
-import 'dart:developer' as developer;
 import 'dart:math';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +12,7 @@ import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/utils/app_haptics.dart';
 
 /// Identifies the high-level section of the app for navigation purposes.
 enum AppSection { dashboard, inventory, products, transactions, reports }
@@ -183,40 +184,97 @@ class _NavigationSheet extends StatelessWidget {
   }
 }
 
-class _NotificationsSheet extends StatelessWidget {
+class _NotificationsSheet extends StatefulWidget {
   const _NotificationsSheet();
 
   @override
+  State<_NotificationsSheet> createState() => _NotificationsSheetState();
+}
+
+class _NotificationsSheetState extends State<_NotificationsSheet> {
+  List<String> _notifications = const [];
+  String? _error;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final payload = await _loadNotifications();
+    if (!mounted) return;
+    setState(() {
+      _notifications = payload.messages;
+      _error = payload.error;
+      _isLoading = false;
+    });
+  }
+
+  void _clearAll() {
+    AppHaptics.mediumImpact();
+    setState(() {
+      _notifications = const [];
+    });
+    showQuickMessage(context, 'Notifications cleared');
+  }
+
+  void _dismissAt(int index) {
+    AppHaptics.selectionChanged();
+    setState(() {
+      final updated = List<String>.of(_notifications);
+      if (index >= 0 && index < updated.length) {
+        updated.removeAt(index);
+      }
+      _notifications = updated;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_NotificationPayload>(
-      future: _loadNotifications(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            height: 220,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (_isLoading) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        final payload =
-            snapshot.data ??
-            const _NotificationPayload(messages: <String>[], error: null);
-        final notifications = payload.messages;
-        final error = payload.error;
+    final notifications = _notifications;
+    final error = _error;
 
-        return Column(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 420),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'Notifications',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Notifications',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (notifications.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: _clearAll,
+                    icon: const Icon(Icons.clear_all, size: 18),
+                    label: const Text('Clear all'),
+                  ),
+              ],
             ),
             if (error != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -228,34 +286,67 @@ class _NotificationsSheet extends StatelessWidget {
                         style: const TextStyle(color: Colors.red, fontSize: 13),
                       ),
                     ),
+                    TextButton(
+                      onPressed: () {
+                        AppHaptics.selectionChanged();
+                        _refresh();
+                      },
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
             if (notifications.isEmpty)
               const Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('You are all caught up!'),
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    'You are all caught up!',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
               )
             else
               Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: notifications.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      leading: const Icon(Icons.notifications),
-                      title: Text(
-                        notifications[index],
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    );
-                  },
+                fit: FlexFit.loose,
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: notifications.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final message = notifications[index];
+                      return Dismissible(
+                        key: ValueKey('${message.hashCode}-$index'),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) => _dismissAt(index),
+                        background: Container(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Icon(Icons.delete, color: Colors.red),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(Icons.notifications),
+                          title: Text(
+                            message,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Dismiss',
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => _dismissAt(index),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 }

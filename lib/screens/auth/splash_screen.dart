@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:vendwise/screens/auth/login_screen.dart';
 import 'package:vendwise/screens/auth/sign_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class Splashscreen extends StatelessWidget {
   const Splashscreen({super.key});
@@ -43,10 +45,8 @@ class Splashscreen extends StatelessWidget {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SignInScreen()),
-                    );
+                    AppHaptics.selectionChanged();
+                    pushWithSlide<void>(context, SignInScreen());
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: Size(250, 50),
@@ -73,10 +73,8 @@ class Splashscreen extends StatelessWidget {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                  );
+                  AppHaptics.selectionChanged();
+                  pushWithSlide<void>(context, LoginScreen());
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(250, 50),

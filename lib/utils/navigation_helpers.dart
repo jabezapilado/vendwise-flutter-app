@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// A shared page route that slides the next page from right to left on push
@@ -31,10 +32,22 @@ class SlidePageRoute<T> extends PageRouteBuilder<T> {
 }
 
 Future<T?> pushWithSlide<T>(BuildContext context, Widget page) {
+  final platform = Theme.of(context).platform;
+  if (platform == TargetPlatform.iOS || platform == TargetPlatform.macOS) {
+    return Navigator.of(
+      context,
+    ).push<T>(CupertinoPageRoute<T>(builder: (_) => page));
+  }
   return Navigator.of(context).push<T>(SlidePageRoute<T>(page: page));
 }
 
 Future<T?> pushReplacementWithSlide<T, TO>(BuildContext context, Widget page) {
+  final platform = Theme.of(context).platform;
+  if (platform == TargetPlatform.iOS || platform == TargetPlatform.macOS) {
+    return Navigator.of(
+      context,
+    ).pushReplacement<T, TO>(CupertinoPageRoute<T>(builder: (_) => page));
+  }
   return Navigator.of(
     context,
   ).pushReplacement<T, TO>(SlidePageRoute<T>(page: page));

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
 import 'package:vendwise/screens/inventory/inventory_screen.dart';
-import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
+import 'package:vendwise/screens/products/products_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class ReceiptScreen extends StatefulWidget {
   const ReceiptScreen({super.key});
@@ -16,31 +18,21 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   final int _selectedIndex = 3;
 
   void _onItemTapped(int index) {
+    AppHaptics.selectionChanged();
+    if (index == _selectedIndex) {
+      return;
+    }
+
     if (index == 0) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
+      pushWithSlide<void>(context, const DashboardScreen());
     } else if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const InventoryScreen()),
-      );
+      pushWithSlide<void>(context, const InventoryScreen());
     } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProductsScreen()),
-      );
+      pushWithSlide<void>(context, const ProductsScreen());
     } else if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TransactionScreen()),
-      );
+      pushWithSlide<void>(context, const TransactionScreen());
     } else if (index == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SalesReport()),
-      );
+      pushWithSlide<void>(context, const SalesReport());
     }
   }
 
@@ -57,12 +49,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DashboardScreen(),
-                    ),
-                  );
+                  AppHaptics.selectionChanged();
+                  pushWithSlide<void>(context, const DashboardScreen());
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -103,12 +91,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TransactionScreen(),
-                        ),
-                      );
+                      AppHaptics.selectionChanged();
+                      pushWithSlide<void>(context, const TransactionScreen());
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF111C51),
