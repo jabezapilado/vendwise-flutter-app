@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vendwise/screens/auth/reset_password_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 
 /// Simple account settings page that stores preferences locally.
@@ -101,6 +104,33 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     onChanged: (value) => setState(() {
                       _analyticsEnabled = value;
                     }),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.lock_reset),
+                    title: const Text('Reset password'),
+                    subtitle: const Text(
+                      'Update your Vendwise login password.',
+                    ),
+                    onTap: () async {
+                      AppHaptics.selectionChanged();
+                      final updatedUsername = await pushWithSlide<String?>(
+                        context,
+                        const ResetPasswordScreen(),
+                      );
+                      if (!context.mounted) {
+                        return;
+                      }
+                      final username = updatedUsername;
+                      if (username == null || username.isEmpty) {
+                        return;
+                      }
+                      showQuickMessage(
+                        context,
+                        'Password updated for $username.',
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(

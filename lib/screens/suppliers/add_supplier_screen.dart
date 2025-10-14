@@ -158,7 +158,6 @@ class _AddSupplierScreenState extends State<AddSupplierScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 

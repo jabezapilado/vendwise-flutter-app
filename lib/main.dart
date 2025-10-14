@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:vendwise/backend/bootstrap.dart';
+import 'package:vendwise/services/app_session.dart';
 import 'package:vendwise/screens/auth/splash_screen.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppSession.instance.hydrate();
 
   final bootstrapResult = await initializeBackend();
   if (!bootstrapResult.supabaseReady) {

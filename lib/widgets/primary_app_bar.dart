@@ -23,10 +23,21 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       systemOverlayStyle: SystemUiOverlayStyle.light,
-      leading: IconButton(
-        tooltip: 'Menu',
-        icon: const Icon(Icons.menu, color: Colors.white),
-        onPressed: () => showNavigationSheet(context, section),
+      leading: Builder(
+        builder: (buttonContext) {
+          return IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              final scaffoldState = Scaffold.maybeOf(buttonContext);
+              if (scaffoldState != null && scaffoldState.hasDrawer) {
+                scaffoldState.openDrawer();
+              } else {
+                showNavigationSheet(buttonContext, section);
+              }
+            },
+          );
+        },
       ),
       title: Text(
         title,

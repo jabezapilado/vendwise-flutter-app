@@ -2,31 +2,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug iOS (iPhone 15)",
+            "name": "Vendwise • iPhone 15 (debug)",
             "request": "launch",
             "type": "dart",
-            "deviceId": "ios",
             "program": "lib/main.dart",
-            "args": [
-                "--flavor",
-                "development"
-            ]
+            "deviceId": "0F069A04-71C7-4AB6-AF3E-BBE5E2D46160"
         },
         {
-            "name": "Release iOS (iPhone 15)",
+            "name": "Vendwise • iPhone 15 (profile)",
             "request": "launch",
             "type": "dart",
-            "deviceId": "ios",
             "program": "lib/main.dart",
-            "flutterMode": "release"
+            "flutterMode": "profile",
+            "deviceId": "0F069A04-71C7-4AB6-AF3E-BBE5E2D46160"
         },
         {
-            "name": "Profile iOS (iPhone 15)",
+            "name": "Vendwise • iPhone 15 (release)",
             "request": "launch",
             "type": "dart",
-            "deviceId": "ios",
             "program": "lib/main.dart",
-            "flutterMode": "profile"
+            "flutterMode": "release",
+            "deviceId": "0F069A04-71C7-4AB6-AF3E-BBE5E2D46160"
         }
+        
     ]
 }

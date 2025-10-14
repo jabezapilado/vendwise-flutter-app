@@ -52,3 +52,21 @@ Future<T?> pushReplacementWithSlide<T, TO>(BuildContext context, Widget page) {
     context,
   ).pushReplacement<T, TO>(SlidePageRoute<T>(page: page));
 }
+
+Future<T?> pushAndRemoveUntilWithSlide<T>(
+  BuildContext context,
+  Widget page, {
+  bool Function(Route<dynamic>)? predicate,
+}) {
+  final platform = Theme.of(context).platform;
+  final routePredicate = predicate ?? (Route<dynamic> route) => false;
+  if (platform == TargetPlatform.iOS || platform == TargetPlatform.macOS) {
+    return Navigator.of(context).pushAndRemoveUntil<T>(
+      CupertinoPageRoute<T>(builder: (_) => page),
+      routePredicate,
+    );
+  }
+  return Navigator.of(
+    context,
+  ).pushAndRemoveUntil<T>(SlidePageRoute<T>(page: page), routePredicate);
+}

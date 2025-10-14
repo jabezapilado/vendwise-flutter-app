@@ -234,7 +234,6 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 

@@ -54,8 +54,6 @@ abstract class AppRepository {
   Future<void> deleteAppUser(String id);
 }
 
-/// Temporary in-memory implementation. Replace this with the Supabase
-/// implementation once the backend is ready.
 class MockAppRepository implements AppRepository {
   MockAppRepository() {
     _seedData();
@@ -454,15 +452,20 @@ class MockAppRepository implements AppRepository {
       ),
     ]);
 
+    String resolveProductImage(String fileName) {
+      return RemoteAssets.getUrl(fileName) ??
+          p.join('assets', 'images', fileName);
+    }
+
     _products.addAll(<Productmodel>[
       Productmodel(
         id: _generateId('prod'),
         productName: 'Classic Milk Tea',
         productDesc: 'The timeless blend of black tea and creamy milk.',
-        priceM: 90,
-        priceL: 110,
+        priceM: 90.0,
+        priceL: 110.0,
         prodType: 'Drinks',
-        prodImage: RemoteAssets.getUrl('Classic_Milk_Tea.jpg'),
+        prodImage: resolveProductImage('Classic_Milk_Tea.jpg'),
         createdAt: now,
         updatedAt: now,
       ),
@@ -470,10 +473,10 @@ class MockAppRepository implements AppRepository {
         id: _generateId('prod'),
         productName: 'Wintermelon Milk Tea',
         productDesc: 'Refreshing sweet tea with a creamy finish.',
-        priceM: 95,
-        priceL: 115,
+        priceM: 95.0,
+        priceL: 115.0,
         prodType: 'Drinks',
-        prodImage: RemoteAssets.getUrl('Wintermelon_Milk_Tea.jpg'),
+        prodImage: resolveProductImage('Wintermelon_Milk_Tea.jpg'),
         createdAt: now,
         updatedAt: now,
       ),
@@ -481,10 +484,10 @@ class MockAppRepository implements AppRepository {
         id: _generateId('prod'),
         productName: 'Gardenia Bread',
         productDesc: 'Freshly baked loaf perfect for sandwiches and toast.',
-        priceM: 120,
-        priceL: 0,
+        priceM: 120.0,
+        priceL: 0.0,
         prodType: 'Foods',
-        prodImage: RemoteAssets.getUrl('Gardenia_Bread.jpg'),
+        prodImage: resolveProductImage('Gardenia_Bread.jpg'),
         createdAt: now,
         updatedAt: now,
       ),
@@ -492,10 +495,10 @@ class MockAppRepository implements AppRepository {
         id: _generateId('prod'),
         productName: 'Fries',
         productDesc: 'Crispy fries with savory seasoning.',
-        priceM: 35,
-        priceL: 0,
+        priceM: 35.0,
+        priceL: 0.0,
         prodType: 'Foods',
-        prodImage: RemoteAssets.getUrl('French_fries.jpg'),
+        prodImage: resolveProductImage('French_fries.jpg'),
         createdAt: now,
         updatedAt: now,
       ),
@@ -506,7 +509,7 @@ class MockAppRepository implements AppRepository {
         id: _generateId('txn'),
         customerName: 'Louis',
         itemCount: 3,
-        totalAmount: 230,
+        totalAmount: 230.0,
         timePurchased: now.subtract(const Duration(hours: 2)),
         createdAt: now,
         updatedAt: now,
@@ -515,7 +518,7 @@ class MockAppRepository implements AppRepository {
         id: _generateId('txn'),
         customerName: 'Maurice',
         itemCount: 5,
-        totalAmount: 500,
+        totalAmount: 500.0,
         timePurchased: now.subtract(const Duration(minutes: 90)),
         createdAt: now,
         updatedAt: now,
@@ -524,7 +527,7 @@ class MockAppRepository implements AppRepository {
         id: _generateId('txn'),
         customerName: 'Rafael',
         itemCount: 2,
-        totalAmount: 170,
+        totalAmount: 170.0,
         timePurchased: now.subtract(const Duration(minutes: 45)),
         createdAt: now,
         updatedAt: now,
@@ -533,7 +536,7 @@ class MockAppRepository implements AppRepository {
         id: _generateId('txn'),
         customerName: 'Jabez',
         itemCount: 10,
-        totalAmount: 800,
+        totalAmount: 800.0,
         timePurchased: now.subtract(const Duration(minutes: 10)),
         createdAt: now,
         updatedAt: now,

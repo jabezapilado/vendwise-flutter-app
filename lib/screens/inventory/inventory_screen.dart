@@ -4,13 +4,10 @@ import 'package:vendwise/models/inventorymodel.dart';
 import 'package:vendwise/models/suppliermodel.dart';
 import 'package:vendwise/screens/inventory/add_inventory_screen.dart';
 import 'package:vendwise/screens/suppliers/add_supplier_screen.dart';
-import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
-import 'package:vendwise/screens/products/products_screen.dart';
-import 'package:vendwise/screens/dashboard/sales_report.dart';
-import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/screens/inventory/update_inventory_screen.dart';
 import 'package:vendwise/screens/suppliers/update_supplier_screen.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/widgets/app_navigation_drawer.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
 
@@ -22,7 +19,6 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  final int _selectedIndex = 1;
   TextEditingController productsearch = TextEditingController();
   TextEditingController suppliersearch = TextEditingController();
   List<Inventorymodel> inventory = [];
@@ -85,109 +81,78 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _loadData();
   }
 
-  void _onItemTapped(int index) {
-    if (index == 0) {
-      pushWithSlide<void>(context, const DashboardScreen());
-    } else if (index == 1) {
-      // Navigator.push(
-      //   context,
-      //   MaterialPageRoute(builder: (context) => const Inventoryscreen()),
-      // );
-    } else if (index == 2) {
-      pushWithSlide<void>(context, const ProductsScreen());
-    } else if (index == 3) {
-      pushWithSlide<void>(context, const TransactionScreen());
-    } else if (index == 4) {
-      pushWithSlide<void>(context, const SalesReport());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final content = _isLoading && inventory.isEmpty && supplier.isEmpty
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 5),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Color(0xFFADADAD),
-                        size: 20,
-                      ),
-                      SizedBox(width: 1),
-                      Text(
-                        "Back",
-                        style: TextStyle(
-                          color: Color(0xFFADADAD),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: "Inter",
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                //PRODUCT TABLE
-                SizedBox(height: 5),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10, right: 10),
-                  child: productHeader(),
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SingleChildScrollView(child: productTable()),
-                ),
-                SizedBox(height: 5),
-                _buildViewMoreButton(_showInventoryBottomSheet),
-
-                //SUPPLIER TABLE
-                SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10, right: 10),
-                  child: supplierHeader(),
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SingleChildScrollView(child: supplierTable()),
-                ),
-                SizedBox(height: 5),
-                _buildViewMoreButton(_showSupplierBottomSheet),
-                SizedBox(height: 20),
-              ],
-            ),
-          );
-
     return Scaffold(
       appBar: const PrimaryAppBar(
         title: 'Inventory',
         section: AppSection.inventory,
       ),
-      backgroundColor: Color(0xFFFFFFFF),
+      drawer: AppNavigationDrawer(
+        current: AppSection.inventory,
+        rootContext: context,
+      ),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: content is SingleChildScrollView
-            ? content
-            : ListView(
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    child: content,
-                  ),
-                ],
-              ),
+        child: _buildScrollableBody(),
       ),
-      bottomNavigationBar: buttonNav(),
     );
+  }
+
+  Widget _buildScrollableBody() {
+    if (_isLoading && inventory.isEmpty && supplier.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(
+            height: 240,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ],
+      );
+    }
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 20),
+          ..._buildSection(
+            header: productHeader(),
+            table: productTable(),
+            onViewMore: _showInventoryBottomSheet,
+          ),
+          const SizedBox(height: 30),
+          ..._buildSection(
+            header: supplierHeader(),
+            table: supplierTable(),
+            onViewMore: _showSupplierBottomSheet,
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildSection({
+    required Widget header,
+    required Widget table,
+    required VoidCallback onViewMore,
+    EdgeInsetsGeometry headerPadding = const EdgeInsets.symmetric(
+      horizontal: 10,
+    ),
+    EdgeInsetsGeometry tablePadding = const EdgeInsets.all(8.0),
+  }) {
+    return [
+      Padding(padding: headerPadding, child: header),
+      const SizedBox(height: 20),
+      Padding(padding: tablePadding, child: table),
+      const SizedBox(height: 5),
+      _buildViewMoreButton(onViewMore),
+    ];
   }
 
   @override
@@ -689,53 +654,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
             fontSize: 12.0,
             fontWeight: FontWeight.bold,
           ),
-        ),
-      ),
-    );
-  }
-
-  //methods
-  Container buttonNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFD74848), Color(0xFF111C51)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(5.0),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.white,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.space_dashboard_sharp),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: 'Inventory',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_rounded),
-              label: 'Products',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_edu_rounded),
-              label: 'Transactions',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: 'Reports',
-            ),
-          ],
         ),
       ),
     );

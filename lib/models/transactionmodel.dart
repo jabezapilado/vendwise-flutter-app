@@ -14,7 +14,7 @@ class Transactionmodel {
   final String id;
   final String customerName;
   final int itemCount;
-  final int totalAmount;
+  final double totalAmount;
   final DateTime timePurchased;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -29,7 +29,7 @@ class Transactionmodel {
       id: map['id']?.toString() ?? '',
       customerName: (map['customer_name'] ?? '') as String,
       itemCount: _parseNum(map['item_count']).toInt(),
-      totalAmount: _parseNum(map['total_amount']).toInt(),
+      totalAmount: _parseNum(map['total_amount']).toDouble(),
       timePurchased: _tryParseDate(timeValue) ?? DateTime.now(),
       createdAt: _tryParseDate(map['created_at']),
       updatedAt: _tryParseDate(map['updated_at']),
@@ -47,7 +47,7 @@ class TransactionDraft {
 
   final String customerName;
   final int itemCount;
-  final int totalAmount;
+  final double totalAmount;
   final DateTime timePurchased;
 
   Map<String, dynamic> toMap() {

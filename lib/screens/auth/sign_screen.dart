@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vendwise/backend/app_repository.dart';
 import 'package:vendwise/backend/bootstrap.dart';
 import 'package:vendwise/models/app_user.dart';
+import 'package:vendwise/screens/auth/login_screen.dart';
+import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -148,7 +151,10 @@ class _SignInScreenState extends State<SignInScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 18,
+                      ),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.only(
@@ -156,292 +162,319 @@ class _SignInScreenState extends State<SignInScreen> {
                           topRight: Radius.elliptical(45, 45),
                         ),
                       ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'CREATE YOUR ACCOUNT',
-                            style: TextStyle(
-                              fontSize: 25.0,
-                              color: Color(0xFF202756),
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15.0,
-                              vertical: 8.0,
-                            ),
-                            child: TextFormField(
-                              controller: _fullNameController,
-                              textInputAction: TextInputAction.next,
-                              onFieldSubmitted: (_) {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(_emailFocusNode);
-                              },
-                              decoration: const InputDecoration(
-                                labelText: "Full Name",
-                                labelStyle: TextStyle(
-                                  fontFamily: "Inter",
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4D0202),
-                                ),
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.5,
-                                  ),
-                                ),
+                      child: AutofillGroup(
+                        child: Column(
+                          children: [
+                            const Text(
+                              'CREATE YOUR ACCOUNT',
+                              style: TextStyle(
+                                fontSize: 25.0,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF202756),
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please enter your full name";
-                                }
-                                if (value.length < 2) {
-                                  return "Full name must be at least 2 characters";
-                                }
-                                return null;
-                              },
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15.0,
-                              vertical: 8.0,
-                            ),
-                            child: TextFormField(
-                              controller: _emailController,
-                              focusNode: _emailFocusNode,
-                              textInputAction: TextInputAction.next,
-                              onFieldSubmitted: (_) {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(_passwordFocusNode);
-                              },
-                              decoration: const InputDecoration(
-                                labelText: "Phone or Email",
-                                labelStyle: TextStyle(
-                                  fontFamily: "Inter",
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4D0202),
-                                ),
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.5,
-                                  ),
-                                ),
+                            const SizedBox(height: 18),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please enter your email or phone";
-                                }
-                                if (value.contains('@')) {
-                                  if (!RegExp(
-                                    r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$',
-                                  ).hasMatch(value)) {
-                                    return "Please enter a valid email address";
-                                  }
-                                } else if (supabaseRepositoryActive) {
-                                  return 'A valid email is required while Supabase is enabled.';
-                                } else if (value.length < 10) {
-                                  return "Please enter a valid phone number";
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15.0,
-                              vertical: 8.0,
-                            ),
-                            child: TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              focusNode: _passwordFocusNode,
-                              textInputAction: TextInputAction.next,
-                              onFieldSubmitted: (_) {
-                                FocusScope.of(
-                                  context,
-                                ).requestFocus(_confirmPasswordFocusNode);
-                              },
-                              decoration: const InputDecoration(
-                                labelText: "Password",
-                                labelStyle: TextStyle(
-                                  fontFamily: "Inter",
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4D0202),
-                                ),
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
+                              child: TextFormField(
+                                controller: _fullNameController,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.name],
+                                onFieldSubmitted: (_) {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(_emailFocusNode);
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Full Name',
+                                  labelStyle: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4D0202),
                                   ),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please enter a password";
-                                }
-                                if (value.length < 6) {
-                                  return "Password must be at least 6 characters";
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15.0,
-                              vertical: 8.0,
-                            ),
-                            child: TextFormField(
-                              controller: _createPasswordController,
-                              obscureText: true,
-                              focusNode: _confirmPasswordFocusNode,
-                              textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) => _submit(),
-                              decoration: const InputDecoration(
-                                labelText: "Confirm Password",
-                                labelStyle: TextStyle(
-                                  fontFamily: "Inter",
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF4D0202),
-                                ),
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.black,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please confirm your password";
-                                }
-                                if (value != _passwordController.text) {
-                                  return "Passwords do not match";
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFD74848), Color(0xFF1C36B5)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(250, 50),
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                side: const BorderSide(
-                                  color: Colors.white,
-                                  width: 1,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                  horizontal: 60,
-                                ),
-                              ),
-                              onPressed: _isSubmitting ? null : _submit,
-                              child: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'SIGN UP',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: "Inter",
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 17.0,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    "Have an Account?",
-                                    style: TextStyle(
-                                      fontFamily: "Inter",
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
                                       color: Colors.black,
-                                      fontSize: 15.0,
+                                      width: 1.0,
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: const Text(
-                                      "LOGIN",
-                                      style: TextStyle(
-                                        color: Color(0xFF4D0202),
-                                        fontSize: 15.0,
-                                        fontFamily: "Inter",
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.5,
                                     ),
                                   ),
-                                ],
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your full name';
+                                  }
+                                  if (value.length < 2) {
+                                    return 'Full name must be at least 2 characters';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
-                          ),
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                              child: TextFormField(
+                                controller: _emailController,
+                                focusNode: _emailFocusNode,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [
+                                  AutofillHints.email,
+                                  AutofillHints.telephoneNumber,
+                                ],
+                                onFieldSubmitted: (_) {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(_passwordFocusNode);
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Phone or Email',
+                                  labelStyle: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4D0202),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your email or phone';
+                                  }
+                                  if (value.contains('@')) {
+                                    if (!RegExp(
+                                      r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$',
+                                    ).hasMatch(value)) {
+                                      return 'Please enter a valid email address';
+                                    }
+                                  } else if (supabaseRepositoryActive) {
+                                    return 'A valid email is required while Supabase is enabled.';
+                                  } else if (value.length < 10) {
+                                    return 'Please enter a valid phone number';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                              child: TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                focusNode: _passwordFocusNode,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [
+                                  AutofillHints.newPassword,
+                                ],
+                                onFieldSubmitted: (_) {
+                                  FocusScope.of(
+                                    context,
+                                  ).requestFocus(_confirmPasswordFocusNode);
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Password',
+                                  labelStyle: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4D0202),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                              child: TextFormField(
+                                controller: _createPasswordController,
+                                obscureText: true,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                focusNode: _confirmPasswordFocusNode,
+                                textInputAction: TextInputAction.done,
+                                autofillHints: const [
+                                  AutofillHints.newPassword,
+                                ],
+                                onFieldSubmitted: (_) => _submit(),
+                                decoration: const InputDecoration(
+                                  labelText: 'Confirm Password',
+                                  labelStyle: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF4D0202),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please confirm your password';
+                                  }
+                                  if (value != _passwordController.text) {
+                                    return 'Passwords do not match';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD74848),
+                                    Color(0xFF1C36B5),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(250, 50),
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  side: const BorderSide(
+                                    color: Colors.white,
+                                    width: 1,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                    horizontal: 60,
+                                  ),
+                                ),
+                                onPressed: _isSubmitting ? null : _submit,
+                                child: _isSubmitting
+                                    ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'SIGN UP',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 17.0,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 36),
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Padding(
+                                padding: const EdgeInsets.all(10.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Have an Account?',
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        color: Colors.black,
+                                        fontSize: 15.0,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        AppHaptics.selectionChanged();
+                                        pushReplacementWithSlide<void, void>(
+                                          context,
+                                          const LoginScreen(),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'LOGIN',
+                                        style: TextStyle(
+                                          color: Color(0xFF4D0202),
+                                          fontSize: 15.0,
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -32,6 +32,8 @@ class ProductImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget image;
+    final String? source = imageUrl;
+
     if (_isNetwork) {
       image = Image.network(
         imageUrl!,
@@ -52,9 +54,12 @@ class ProductImage extends StatelessWidget {
           );
         },
       );
-    } else if (imageUrl != null && imageUrl!.isNotEmpty) {
+    } else if (source != null && source.isNotEmpty) {
+      final String assetPath = source.contains('/')
+          ? source
+          : 'assets/images/$source';
       image = Image.asset(
-        imageUrl!,
+        assetPath,
         width: width,
         height: height,
         fit: fit,
@@ -71,11 +76,9 @@ class ProductImage extends StatelessWidget {
   }
 
   Widget _fallbackImage() {
-    return Image.asset(
-      placeholderAsset,
-      width: width,
-      height: height,
-      fit: fit,
-    );
+    final String assetPath = placeholderAsset.contains('/')
+        ? placeholderAsset
+        : 'assets/images/$placeholderAsset';
+    return Image.asset(assetPath, width: width, height: height, fit: fit);
   }
 }

@@ -88,7 +88,7 @@ class _SalesReportState extends State<SalesReport> {
       final bucket = range == _ReportRange.daily
           ? DateTime(time.year, time.month, time.day, time.hour)
           : DateTime(time.year, time.month, time.day);
-      buckets[bucket] = (buckets[bucket] ?? 0) + txn.totalAmount.toDouble();
+      buckets[bucket] = (buckets[bucket] ?? 0) + txn.totalAmount;
     }
 
     final sortedBuckets = buckets.entries.toList()
@@ -100,7 +100,7 @@ class _SalesReportState extends State<SalesReport> {
       _filteredTransactions = filtered;
       _totalSales = filtered.fold<double>(
         0,
-        (total, txn) => total + txn.totalAmount.toDouble(),
+        (total, txn) => total + txn.totalAmount,
       );
       _totalItemsSold = filtered.fold<int>(
         0,
@@ -261,7 +261,6 @@ class _SalesReportState extends State<SalesReport> {
                 ],
               ),
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 

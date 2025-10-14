@@ -9,6 +9,7 @@ import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/screens/products/update_product_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/widgets/app_navigation_drawer.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
 import 'package:vendwise/widgets/product_image.dart';
@@ -249,6 +250,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         title: 'Products',
         section: AppSection.products,
       ),
+      drawer: AppNavigationDrawer(
+        current: AppSection.products,
+        rootContext: context,
+      ),
       backgroundColor: const Color(0xFFFFFFFF),
       body: RefreshIndicator(
         onRefresh: _loadProducts,
@@ -263,7 +268,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
               )
             : scrollContent,
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 
@@ -653,8 +657,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '₱${currentProduct.priceM.toStringAsFixed(0)} (M) | '
-                      '₱${currentProduct.priceL.toStringAsFixed(0)} (L)',
+                      '₱${currentProduct.priceM.toStringAsFixed(2)} (M) | '
+                      '₱${currentProduct.priceL.toStringAsFixed(2)} (L)',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

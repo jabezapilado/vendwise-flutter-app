@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vendwise/backend/app_repository.dart';
 import 'package:vendwise/models/suppliermodel.dart';
-import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
-import 'package:vendwise/screens/inventory/inventory_screen.dart';
-import 'package:vendwise/screens/dashboard/sales_report.dart';
-import 'package:vendwise/screens/dashboard/transaction_screen.dart';
-import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
-import 'package:vendwise/utils/navigation_helpers.dart';
 
 class UpdateSupplierScreen extends StatefulWidget {
   const UpdateSupplierScreen({super.key, required this.supplier});
@@ -19,7 +13,6 @@ class UpdateSupplierScreen extends StatefulWidget {
 }
 
 class _UpdateSupplierScreenState extends State<UpdateSupplierScreen> {
-  final int _selectedIndex = 1;
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
@@ -137,25 +130,6 @@ class _UpdateSupplierScreenState extends State<UpdateSupplierScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _onItemTapped(int index) {
-    AppHaptics.selectionChanged();
-    if (index == _selectedIndex) {
-      return;
-    }
-
-    if (index == 0) {
-      pushWithSlide<void>(context, const DashboardScreen());
-    } else if (index == 1) {
-      pushWithSlide<void>(context, const InventoryScreen());
-    } else if (index == 2) {
-      pushWithSlide<void>(context, const ProductsScreen());
-    } else if (index == 3) {
-      pushWithSlide<void>(context, const TransactionScreen());
-    } else if (index == 4) {
-      pushWithSlide<void>(context, const SalesReport());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -212,7 +186,6 @@ class _UpdateSupplierScreenState extends State<UpdateSupplierScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -248,52 +221,6 @@ class _UpdateSupplierScreenState extends State<UpdateSupplierScreen> {
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFD74848), Color(0xFF111C51)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(5.0),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.white,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.space_dashboard_sharp),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: 'Inventory',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_rounded),
-              label: 'Products',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_edu_rounded),
-              label: 'Transactions',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: 'Reports',
-            ),
-          ],
         ),
       ),
     );

@@ -3,14 +3,20 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vendwise/backend/app_repository.dart';
+import 'package:vendwise/backend/bootstrap.dart';
+import 'package:vendwise/models/app_user.dart';
 import 'package:vendwise/models/inventorymodel.dart';
+import 'package:vendwise/screens/auth/login_screen.dart';
 import 'package:vendwise/screens/settings/account_settings_screen.dart';
 import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
 import 'package:vendwise/screens/inventory/inventory_screen.dart';
 import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
+import 'package:vendwise/services/app_session.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 
@@ -81,17 +87,43 @@ Future<void> showAccountSheet(BuildContext context) async {
               title: const Text('Sign out'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Sign out feature is coming soon.'),
-                  ),
-                );
+                signOutAndReturnToLogin(context);
               },
             ),
           ],
         ),
       );
     },
+  );
+}
+
+Future<void> signOutAndReturnToLogin(BuildContext context) async {
+  AppHaptics.mediumImpact();
+  final navigator = Navigator.of(context);
+  final prefs = await SharedPreferences.getInstance();
+  final remember = prefs.getBool('login_remember_me') ?? false;
+  if (!remember) {
+    await prefs.setBool('login_remember_me', false);
+    await prefs.remove('login_username');
+    await prefs.remove('login_password');
+  }
+
+  await AppSession.instance.clearUser();
+
+  if (supabaseRepositoryActive) {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {
+      // Ignore sign-out failures; the user will still return to the login screen.
+    }
+  }
+
+  if (!navigator.mounted) {
+    return;
+  }
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+    (route) => false,
   );
 }
 
@@ -112,11 +144,19 @@ class _NavigationSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'Quick navigation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: ValueListenableBuilder<AppUser?>(
+              valueListenable: AppSession.instance.currentUser,
+              builder: (_, __, ___) {
+                return Text(
+                  AppSession.instance.greeting(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              },
             ),
           ),
           _NavigationTile(
@@ -367,13 +407,15 @@ Future<_NotificationPayload> _loadNotifications() async {
 
     messages.addAll(_buildLowStockAlerts(inventory));
 
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
     final todaysTransactions = transactions.where((txn) {
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      return !txn.timePurchased.isBefore(startOfDay);
-    });
+      final timestamp = txn.timePurchased;
+      return !timestamp.isBefore(startOfDay) && timestamp.isBefore(endOfDay);
+    }).toList();
 
     if (todaysTransactions.isNotEmpty) {
-      final totalSales = todaysTransactions.fold<int>(
+      final totalSales = todaysTransactions.fold<double>(
         0,
         (sum, txn) => sum + txn.totalAmount,
       );

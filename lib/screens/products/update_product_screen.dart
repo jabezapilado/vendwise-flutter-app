@@ -5,10 +5,6 @@ import 'package:vendwise/backend/bootstrap.dart';
 import 'package:vendwise/backend/storage_service.dart';
 import 'package:vendwise/models/productmodel.dart';
 import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
-import 'package:vendwise/screens/inventory/inventory_screen.dart';
-import 'package:vendwise/screens/dashboard/sales_report.dart';
-import 'package:vendwise/screens/dashboard/transaction_screen.dart';
-import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/widgets/product_image.dart';
@@ -23,7 +19,6 @@ class UpdateProductScreen extends StatefulWidget {
 }
 
 class _UpdateProductScreenState extends State<UpdateProductScreen> {
-  final int _selectedIndex = 2;
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _productNameController;
@@ -46,10 +41,10 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
     final product = widget.product;
     _productNameController = TextEditingController(text: product.productName);
     _priceMediumController = TextEditingController(
-      text: product.priceM.toString(),
+      text: product.priceM.toStringAsFixed(2),
     );
     _priceLargeController = TextEditingController(
-      text: product.priceL.toString(),
+      text: product.priceL.toStringAsFixed(2),
     );
     _descriptionController = TextEditingController(text: product.productDesc);
     _selectedType = product.prodType.isEmpty ? null : product.prodType;
@@ -128,11 +123,13 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
       return;
     }
 
-    final int? priceMedium = int.tryParse(_priceMediumController.text.trim());
+    final double? priceMedium = double.tryParse(
+      _priceMediumController.text.trim(),
+    );
     final String largeRaw = _priceLargeController.text.trim();
-    final int? priceLarge = largeRaw.isEmpty
+    final double? priceLarge = largeRaw.isEmpty
         ? priceMedium
-        : int.tryParse(largeRaw);
+        : double.tryParse(largeRaw);
 
     if (priceMedium == null) {
       _showSnackbar('Please enter a valid price for medium.');
@@ -149,7 +146,7 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
       return;
     }
 
-    const int minimumPrice = 0;
+    const double minimumPrice = 0;
     if (priceMedium < minimumPrice || priceLarge < minimumPrice) {
       _showSnackbar('Price values cannot be negative.');
       return;
@@ -295,25 +292,6 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _onItemTapped(int index) {
-    AppHaptics.selectionChanged();
-    if (index == _selectedIndex) {
-      return;
-    }
-
-    if (index == 0) {
-      pushWithSlide<void>(context, const DashboardScreen());
-    } else if (index == 1) {
-      pushWithSlide<void>(context, const InventoryScreen());
-    } else if (index == 2) {
-      pushWithSlide<void>(context, const ProductsScreen());
-    } else if (index == 3) {
-      pushWithSlide<void>(context, const TransactionScreen());
-    } else if (index == 4) {
-      pushWithSlide<void>(context, const SalesReport());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -373,7 +351,6 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -409,52 +386,6 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFD74848), Color(0xFF111C51)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(5.0),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.white,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.space_dashboard_sharp),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: 'Inventory',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_rounded),
-              label: 'Products',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_edu_rounded),
-              label: 'Transactions',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: 'Reports',
-            ),
-          ],
         ),
       ),
     );
@@ -524,12 +455,14 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
             _buildTextField(
               controller: _priceMediumController,
               hintText: 'Price',
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter price';
                 }
-                if (int.tryParse(value.trim()) == null) {
+                if (double.tryParse(value.trim()) == null) {
                   return 'Please enter a valid number';
                 }
                 return null;
@@ -539,12 +472,14 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
             _buildTextField(
               controller: _priceLargeController,
               hintText: 'Price',
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return null;
                 }
-                if (int.tryParse(value.trim()) == null) {
+                if (double.tryParse(value.trim()) == null) {
                   return 'Please enter a valid number';
                 }
                 return null;

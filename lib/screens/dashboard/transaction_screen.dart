@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vendwise/backend/app_repository.dart';
 import 'package:vendwise/models/productmodel.dart';
+import 'package:vendwise/models/transactionmodel.dart';
 import 'package:vendwise/screens/dashboard/dashboard_screen.dart';
 import 'package:vendwise/screens/dashboard/receipt_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
@@ -9,9 +10,11 @@ import 'package:vendwise/screens/products/add_product_screen.dart';
 import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/widgets/app_navigation_drawer.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
 import 'package:vendwise/widgets/product_image.dart';
+import 'package:vendwise/services/receipt_store.dart';
 
 class TransactionScreen extends StatefulWidget {
   const TransactionScreen({super.key});
@@ -145,6 +148,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
         title: 'Transaction',
         section: AppSection.transactions,
       ),
+      drawer: AppNavigationDrawer(
+        current: AppSection.transactions,
+        rootContext: context,
+      ),
       backgroundColor: const Color(0xFFFFFFFF),
       body: SafeArea(
         child: Column(
@@ -191,7 +198,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 
@@ -504,45 +510,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: cartItems.isEmpty
-                  ? null
-                  : () {
-                      AppHaptics.mediumImpact();
-                      showDialog<void>(
-                        context: context,
-                        builder: (dialogContext) {
-                          return AlertDialog(
-                            title: const Text('Process payment'),
-                            content: Text(
-                              'Total: ₱${getTotal().toStringAsFixed(2)}',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(dialogContext).pop(),
-                                child: const Text('Cancel'),
-                              ),
-                              FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF26347C),
-                                ),
-                                onPressed: () {
-                                  Navigator.of(dialogContext).pop();
-                                  pushWithSlide<void>(
-                                    context,
-                                    const ReceiptScreen(),
-                                  );
-                                  setState(() {
-                                    cartItems.clear();
-                                  });
-                                },
-                                child: const Text('Complete'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+              onPressed: cartItems.isEmpty ? null : _processPayment,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF26347C),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -564,6 +532,157 @@ class _TransactionScreenState extends State<TransactionScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _processPayment() async {
+    AppHaptics.mediumImpact();
+    final total = getTotal();
+    final subtotal = getSubtotal();
+    final tax = getTax();
+    final cashController = TextEditingController(
+      text: total.toStringAsFixed(2),
+    );
+    String? errorText;
+
+    final receivedCash = await showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Process payment'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Amount due: ₱${total.toStringAsFixed(2)}'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: cashController,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: false,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Cash received',
+                      prefixText: '₱',
+                      errorText: errorText,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF26347C),
+                  ),
+                  onPressed: () {
+                    final parsed = _parseCashAmount(cashController.text);
+                    if (parsed == null) {
+                      setDialogState(() {
+                        errorText = 'Enter a valid amount';
+                      });
+                      return;
+                    }
+                    if (parsed + 0.009 < total) {
+                      setDialogState(() {
+                        errorText = 'Amount is less than total due';
+                      });
+                      return;
+                    }
+
+                    Navigator.of(dialogContext).pop(parsed);
+                  },
+                  child: const Text('Complete'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    cashController.dispose();
+
+    if (receivedCash == null) {
+      return;
+    }
+
+    final items = cartItems
+        .map(
+          (item) => ReceiptItem(
+            name: item.product.productName,
+            quantity: item.quantity,
+            unitPrice: item.product.priceM,
+          ),
+        )
+        .toList();
+
+    final trimmedName = customernamesearch.text.trim();
+    final customerName = trimmedName.isEmpty ? 'Walk-in customer' : trimmedName;
+    final itemCount = cartItems.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
+    final timestamp = DateTime.now();
+    final draft = TransactionDraft(
+      customerName: customerName,
+      itemCount: itemCount,
+      totalAmount: total,
+      timePurchased: timestamp,
+    );
+
+    try {
+      await appRepository.createTransaction(draft);
+    } catch (error, stackTrace) {
+      debugPrint('Failed to record transaction: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to record transaction. Please try again.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final change = receivedCash - total;
+    final receipt = TransactionReceipt(
+      id: timestamp.millisecondsSinceEpoch.toString(),
+      customerName: customerName,
+      items: items,
+      subtotal: subtotal,
+      tax: tax,
+      total: total,
+      cashTendered: receivedCash,
+      change: change > 0 ? change : 0,
+      timestamp: timestamp,
+    );
+
+    ReceiptStore.instance.record(receipt);
+
+    if (!mounted) return;
+    pushWithSlide<void>(context, const ReceiptScreen());
+
+    setState(() {
+      cartItems.clear();
+      customernamesearch.clear();
+    });
+  }
+
+  double? _parseCashAmount(String input) {
+    final cleaned = input.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) {
+      return null;
+    }
+    return double.tryParse(cleaned);
   }
 
   Container buttonNav() {

@@ -5,11 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vendwise/backend/app_repository.dart';
 import 'package:vendwise/models/inventorymodel.dart';
 import 'package:vendwise/models/transactionmodel.dart';
-import 'package:vendwise/screens/inventory/inventory_screen.dart';
-import 'package:vendwise/screens/products/products_screen.dart';
-import 'package:vendwise/screens/dashboard/sales_report.dart';
-import 'package:vendwise/screens/dashboard/transaction_screen.dart';
-import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/widgets/app_navigation_drawer.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
 
@@ -23,7 +19,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   List<Transactionmodel> transaction = [];
   List<Inventorymodel> inventory = [];
-  final int _selectedIndex = 0;
   bool _isLoading = false;
   double _todaySales = 0;
   int _ordersToday = 0;
@@ -94,32 +89,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (!mounted) return;
 
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final todaysTransactions = fetchedTransactions.where((txn) {
+      final timestamp = txn.timePurchased;
+      return !timestamp.isBefore(startOfDay) && timestamp.isBefore(endOfDay);
+    }).toList();
+
     setState(() {
       inventory = fetchedInventory;
       transaction = fetchedTransactions;
-      _todaySales = fetchedTransactions.fold<double>(
+      _todaySales = todaysTransactions.fold<double>(
         0,
-        (sum, item) => sum + item.totalAmount.toDouble(),
+        (sum, item) => sum + item.totalAmount,
       );
-      _ordersToday = fetchedTransactions.fold<int>(
+      _ordersToday = todaysTransactions.fold<int>(
         0,
         (sum, item) => sum + item.itemCount,
       );
       _isLoading = false;
     });
-  }
-
-  void _onItemTapped(int index) {
-    if (index == 0) {
-    } else if (index == 1) {
-      pushWithSlide<void>(context, const InventoryScreen());
-    } else if (index == 2) {
-      pushWithSlide<void>(context, const ProductsScreen());
-    } else if (index == 3) {
-      pushWithSlide<void>(context, const TransactionScreen());
-    } else if (index == 4) {
-      pushWithSlide<void>(context, const SalesReport());
-    }
   }
 
   @override
@@ -322,6 +312,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'Dashboard',
         section: AppSection.dashboard,
       ),
+      drawer: AppNavigationDrawer(
+        current: AppSection.dashboard,
+        rootContext: context,
+      ),
       backgroundColor: Color(0xFFFFFFFF),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -336,7 +330,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
       ),
-      bottomNavigationBar: buttonNav(),
     );
   }
 
@@ -366,7 +359,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return ListTile(
                 leading: const Icon(Icons.receipt_long),
                 title: Text(name),
-                subtitle: Text('${txn.itemCount} items • ₱${txn.totalAmount}'),
+                subtitle: Text(
+                  '${txn.itemCount} items • ₱${txn.totalAmount.toStringAsFixed(2)}',
+                ),
                 trailing: Text(txn.formattedTime),
               );
             },
@@ -514,53 +509,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  //METHODS----------------------------------------------------
-  Container buttonNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFD74848), Color(0xFF111C51)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(5.0),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.white,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.space_dashboard_sharp),
-              label: "Dashboard",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: "Inventory",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_rounded),
-              label: "Products",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_edu_rounded),
-              label: "Transactions",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: "Reports",
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Container transactionTable() {
     return Container(
       decoration: BoxDecoration(
@@ -699,7 +647,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(8.0),
                       child: Text(
-                        "₱${transaction[index].totalAmount.toString()} ",
+                        "₱${transaction[index].totalAmount.toStringAsFixed(2)} ",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.black,

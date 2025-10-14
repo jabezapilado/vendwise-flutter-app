@@ -14,8 +14,8 @@ class Productmodel {
   final String id;
   final String productName;
   final String productDesc;
-  final int priceM;
-  final int priceL;
+  final double priceM;
+  final double priceL;
   final String prodType;
   final String? prodImage;
   final DateTime? createdAt;
@@ -25,8 +25,8 @@ class Productmodel {
     String? id,
     String? productName,
     String? productDesc,
-    int? priceM,
-    int? priceL,
+    double? priceM,
+    double? priceL,
     String? prodType,
     String? prodImage,
     DateTime? createdAt,
@@ -50,8 +50,8 @@ class Productmodel {
       id: map['id']?.toString() ?? '',
       productName: (map['product_name'] ?? '') as String,
       productDesc: (map['product_desc'] ?? '') as String,
-      priceM: _parseNum(map['price_m']).toInt(),
-      priceL: _parseNum(map['price_l']).toInt(),
+      priceM: _parseNum(map['price_m']).toDouble(),
+      priceL: _parseNum(map['price_l']).toDouble(),
       prodType: (map['prod_type'] ?? '') as String,
       prodImage: map['image_url'] as String?,
       createdAt: _tryParseDate(map['created_at']),
@@ -73,8 +73,8 @@ class ProductDraft {
 
   final String productName;
   final String productDesc;
-  final int priceM;
-  final int priceL;
+  final double priceM;
+  final double priceL;
   final String prodType;
   final String? prodImage;
   final bool clearImage;
