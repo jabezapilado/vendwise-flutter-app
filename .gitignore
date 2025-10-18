@@ -30,7 +30,43 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
+Pods/
+ios/Pods/
+DerivedData/
+
+# iOS
+*.xcarchive
+build/ios/Archive
+build/ios/ipa
+
+# macOS
+*.app
+
+# Android
+*.apk
+*.aab
+android/app/*.keystore
+android/*.jks
+
+# Archives / packages
+*.ipa
+*.xcarchive
+
+# Documents and generated files
+*.docx
+
+# Credentials
+.env
+.env.local
+.env.*.local
+*.p12
+*.pem
+*.key
+*.jks
+key.properties
+vendwise-release.jks
+
 /coverage/
 
 # Symbolication related
@@ -98,3 +134,14 @@ app.*.map.json
 android/key.properties
 *.jks
 *.keystore
+
+# Added by cleanup script
+# Ignore IDE and build caches
+.idea/
+*.iml
+*.zip
+.DS_Store
+/build/
+.dart_tool/
+/test_cache/
+.macos/
