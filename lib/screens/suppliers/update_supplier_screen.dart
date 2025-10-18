@@ -195,9 +195,11 @@ class _UpdateSupplierScreenState extends State<UpdateSupplierScreen> {
         onPressed: () {},
         icon: const Icon(Icons.menu, color: Colors.white),
       ),
-      title: const Text(
-        'Update Supplier',
-        style: TextStyle(
+      title: Text(
+        widget.supplier.supplierSeq != null
+            ? 'Update Supplier #${widget.supplier.supplierSeq}'
+            : 'Update Supplier',
+        style: const TextStyle(
           fontFamily: 'Inter',
           color: Colors.white,
           fontSize: 20.0,

@@ -1,4 +1,4 @@
-# Vendwise iOS Setup (Example: iPhone 15 on iOS 18.7)
+# VendWise iOS Setup (Example: iPhone 15 on iOS 18.7)
 
 ## 📱 Device Compatibility
 - **Recommended Test Device**: iPhone 15 (works with any modern iPhone)

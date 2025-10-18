@@ -1,4 +1,4 @@
-# Vendwise Backlog Snapshot (2025-10-10)
+# VendWise Backlog Snapshot (2025-10-10)
 
 ## Code-level TODOs
 - `lib/screens/inventory/update_inventory_screen.dart`: Replace legacy dropdown widget with `DropdownMenu` once the app targets Flutter 3.33+.

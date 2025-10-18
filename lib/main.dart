@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vendwise/backend/bootstrap.dart';
 import 'package:vendwise/services/app_session.dart';
 import 'package:vendwise/screens/auth/splash_screen.dart';
@@ -14,6 +15,9 @@ Future<void> main(List<String> args) async {
       '${bootstrapResult.describeIssues()}',
     );
   }
+
+  // Lock device orientations to portrait only for the app.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(
     MaterialApp(

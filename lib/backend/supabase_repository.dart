@@ -60,6 +60,28 @@ class SupabaseAppRepository implements AppRepository {
     await _perform(() => _client.from(_inventoryTable).delete().eq('id', id));
   }
 
+  @override
+  Future<Inventorymodel> updateInventoryQuantity(
+    String id,
+    int quantity,
+  ) async {
+    final data = await _perform(
+      () => _client
+          .from(_inventoryTable)
+          .update({
+            'quantity': quantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select()
+          .maybeSingle(),
+    );
+    if (data == null) {
+      throw StateError('Inventory item $id not found');
+    }
+    return _mapInventory(data);
+  }
+
   // SUPPLIERS ---------------------------------------------------------------
   @override
   Future<List<Suppliermodel>> fetchSuppliers() async {

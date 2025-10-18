@@ -20,15 +20,19 @@ class AddInventoryScreen extends StatefulWidget {
 }
 
 class _AddInventoryScreenState extends State<AddInventoryScreen> {
+  // Quantity increment/decrement controls were removed from the UI; keep a simple
+  // numeric TextFormField for quantity input.
+
   final int _selectedIndex = 1;
   final _formKey = GlobalKey<FormState>();
   TextEditingController productName = TextEditingController();
   TextEditingController productPrice = TextEditingController();
   TextEditingController productQuantity = TextEditingController();
+  DateTime? _selectedExpiry;
   TextEditingController productExpiry = TextEditingController();
   TextEditingController productSupplier = TextEditingController();
   String? fileName;
-  List<String> dropdownItems = <String>['Drinks', 'Food', 'Add-ons'];
+  List<String> dropdownItems = <String>['Drinks', 'Foods', 'Add-ons'];
   String? selectedItem;
   List<Suppliermodel> supplier = [];
   String? selectedSupplierName;
@@ -123,6 +127,7 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
       quantity: quantity,
       contactNum: selectedSupplierDetails?.contactNum,
       email: selectedSupplierDetails?.email,
+      expiryDate: _selectedExpiry,
     );
 
     setState(() {
@@ -345,7 +350,13 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
                   }
                   return null;
                 },
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                ),
               ),
             ),
 
@@ -448,11 +459,17 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
               height: 40,
               child: TextFormField(
                 controller: productQuantity,
+                textAlign: TextAlign.left,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(
                   hintText: 'Quantity',
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -493,17 +510,32 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
               height: 40,
               child: TextFormField(
                 controller: productExpiry,
+                readOnly: true,
                 decoration: const InputDecoration(
                   hintText: 'dd/mm/yyyy',
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                keyboardType: TextInputType.datetime,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter expiry date';
+                onTap: () async {
+                  final now = DateTime.now();
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedExpiry ?? now,
+                    firstDate: now.subtract(const Duration(days: 3650)),
+                    lastDate: now.add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedExpiry = picked;
+                      productExpiry.text =
+                          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                    });
                   }
+                },
+                validator: (value) {
+                  // expiry is optional now; only validate format if provided
+                  if (_selectedExpiry == null) return null;
                   return null;
                 },
               ),
@@ -539,7 +571,9 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
                   return DropdownMenuItem<String>(
                     value: s.supplierName,
                     child: Text(
-                      s.supplierName,
+                      s.supplierSeq != null
+                          ? '${s.supplierSeq} • ${s.supplierName}'
+                          : s.supplierName,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black,
@@ -559,7 +593,13 @@ class _AddInventoryScreenState extends State<AddInventoryScreen> {
                   }
                   return null;
                 },
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                ),
               ),
             ),
 

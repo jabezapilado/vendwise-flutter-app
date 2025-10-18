@@ -9,6 +9,7 @@ import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/utils/timezone_utils.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 
 class SalesReport extends StatefulWidget {
@@ -58,7 +59,7 @@ class _SalesReportState extends State<SalesReport> {
 
   void _applyFilters({required _ReportRange range}) {
     final now = DateTime.now();
-    final startOfToday = DateTime(now.year, now.month, now.day);
+    final startOfToday = startOfPhilippineDay(now);
     DateTime start;
     DateTime end;
 
@@ -77,14 +78,19 @@ class _SalesReportState extends State<SalesReport> {
         break;
     }
 
-    final filtered = _allTransactions.where((txn) {
-      final timestamp = txn.timePurchased;
-      return !timestamp.isBefore(start) && timestamp.isBefore(end);
-    }).toList()..sort((a, b) => b.timePurchased.compareTo(a.timePurchased));
+    final filtered =
+        _allTransactions.where((txn) {
+          final timestamp = toPhilippineTime(txn.timePurchased);
+          return !timestamp.isBefore(start) && timestamp.isBefore(end);
+        }).toList()..sort(
+          (a, b) => toPhilippineTime(
+            b.timePurchased,
+          ).compareTo(toPhilippineTime(a.timePurchased)),
+        );
 
     final buckets = <DateTime, double>{};
     for (final txn in filtered) {
-      final time = txn.timePurchased;
+      final time = toPhilippineTime(txn.timePurchased);
       final bucket = range == _ReportRange.daily
           ? DateTime(time.year, time.month, time.day, time.hour)
           : DateTime(time.year, time.month, time.day);
@@ -338,7 +344,9 @@ class _SalesReportState extends State<SalesReport> {
   }
 
   Widget _buildRangeDivider() {
-    return Container(width: 1, height: double.infinity, color: Colors.black);
+    // Avoid using double.infinity for height inside a Row (unbounded height).
+    // Use a fixed, visually-appropriate height so constraints remain finite.
+    return Container(width: 1, height: 36, color: Colors.black);
   }
 
   Widget _buildMetrics(BuildContext context) {
@@ -439,7 +447,7 @@ class _SalesReportState extends State<SalesReport> {
             ),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: () => _showAllTransactions(),
             child: const Text(
               'View More',
               style: TextStyle(
@@ -452,6 +460,37 @@ class _SalesReportState extends State<SalesReport> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showAllTransactions() async {
+    if (_filteredTransactions.isEmpty) return;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          expand: false,
+          maxChildSize: 0.95,
+          builder: (context, controller) {
+            return ListView.separated(
+              controller: controller,
+              padding: const EdgeInsets.all(8),
+              itemCount: _filteredTransactions.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final t = _filteredTransactions[index];
+                return ListTile(
+                  leading: const Icon(Icons.receipt_long),
+                  title: Text(t.customerName),
+                  subtitle: Text('${t.itemCount} items • ${t.formattedTime}'),
+                  trailing: Text(_currencyFormatter.format(t.totalAmount)),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -589,19 +628,21 @@ class _SalesReportState extends State<SalesReport> {
               _TableHeaderCell(label: 'Time'),
             ],
           ),
-          ...List.generate(_filteredTransactions.length, (index) {
-            final txn = _filteredTransactions[index];
-            return TableRow(
-              children: [
-                _TableDataCell(value: txn.customerName),
-                _TableDataCell(value: txn.itemCount.toString()),
-                _TableDataCell(
-                  value: _currencyFormatter.format(txn.totalAmount),
+          ..._filteredTransactions
+              .take(10)
+              .map(
+                (txn) => TableRow(
+                  children: [
+                    _TableDataCell(value: txn.customerName),
+                    _TableDataCell(value: txn.itemCount.toString()),
+                    _TableDataCell(
+                      value: _currencyFormatter.format(txn.totalAmount),
+                    ),
+                    _TableDataCell(value: txn.formattedTime),
+                  ],
                 ),
-                _TableDataCell(value: txn.formattedTime),
-              ],
-            );
-          }),
+              )
+              .toList(),
         ],
       ),
     );

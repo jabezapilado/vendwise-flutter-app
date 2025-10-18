@@ -7,6 +7,8 @@ import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/utils/app_haptics.dart';
 import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
+import 'package:vendwise/models/app_user.dart';
+import 'package:vendwise/services/app_session.dart';
 
 class AppNavigationDrawer extends StatelessWidget {
   const AppNavigationDrawer({
@@ -74,8 +76,9 @@ class AppNavigationDrawer extends StatelessWidget {
                     title: Text(
                       item.label,
                       style: TextStyle(
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         color: selected ? const Color(0xFFD74848) : null,
                       ),
                     ),
@@ -150,22 +153,25 @@ class _DrawerHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.end,
-        children: const [
-          Text(
-            'Vendwise',
+        children: [
+          const Text(
+            'VendWise',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            'Quick navigation',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
+          const SizedBox(height: 4),
+          ValueListenableBuilder<AppUser?>(
+            valueListenable: AppSession.instance.currentUser,
+            builder: (context, user, _) {
+              final greeting = AppSession.instance.greeting();
+              return Text(
+                greeting,
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              );
+            },
           ),
         ],
       ),

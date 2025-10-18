@@ -1,4 +1,4 @@
-## 📱 How to Install Vendwise on Your iPhone 15
+## 📱 How to Install VendWise on Your iPhone 15
 
 ### 🎯 **Quick Install Guide:**
 

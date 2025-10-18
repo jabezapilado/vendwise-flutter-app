@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔨 Building Vendwise IPA without iOS Simulator..."
+echo "🔨 Building VendWise IPA without iOS Simulator..."
 echo "=================================================="
 
 # Navigate to project directory
@@ -57,7 +57,7 @@ else
         cd build/ios/ipa
         zip -r ../../../vendwise-debug.ipa Payload/
         cd ../../..
-        echo "🎉 Debug IPA created: vendwise-debug.ipa"
+    echo "🎉 Debug IPA created: vendwise-debug.ipa"
     else
         echo "❌ Both builds failed. Please check Xcode configuration."
     fi

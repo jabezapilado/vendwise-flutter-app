@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🎯 Simple IPA Creator for Vendwise (No Simulator Required)"
+echo "🎯 Simple IPA Creator for VendWise (No Simulator Required)"
 echo "=========================================================="
 
 # Navigate to project

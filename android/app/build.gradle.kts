@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -32,9 +35,49 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Read keystore properties if present and configure signing for release
+            val keystorePropsFile = rootProject.file("key.properties")
+            if (keystorePropsFile.exists()) {
+                val keystoreProps = Properties()
+                keystoreProps.load(FileInputStream(keystorePropsFile))
+
+                val keystorePath = keystoreProps.getProperty("storeFile")
+                val keystoreStorePassword = keystoreProps.getProperty("storePassword")
+                val keystoreAlias = keystoreProps.getProperty("keyAlias")
+                val keystoreKeyPassword = keystoreProps.getProperty("keyPassword")
+
+                signingConfigs {
+                    create("release") {
+                        // Resolve keystore path: prefer module-relative file, then rootProject file
+                        val candidateModuleFile = project.file(keystorePath)
+                        // rootProject.projectDir is the 'android' folder; its parent is the repo root
+                        val repoRoot = rootProject.projectDir.parentFile ?: rootProject.projectDir
+                        val candidateRepoFile = File(repoRoot, keystorePath)
+                        // also try stripping a leading "android/" segment if present
+                        val stripped = keystorePath.removePrefix("android/")
+                        val candidateRepoStripped = File(repoRoot, stripped)
+                        // finally try filename only at repo root
+                        val candidateFilename = File(repoRoot, keystorePath.substringAfterLast('/'))
+
+                        val resolvedKeystoreFile = when {
+                            candidateModuleFile.exists() -> candidateModuleFile
+                            candidateRepoFile.exists() -> candidateRepoFile
+                            candidateRepoStripped.exists() -> candidateRepoStripped
+                            candidateFilename.exists() -> candidateFilename
+                            else -> candidateRepoFile
+                        }
+
+                        storeFile = resolvedKeystoreFile
+                        storePassword = keystoreStorePassword
+                        keyAlias = keystoreAlias
+                        keyPassword = keystoreKeyPassword
+                    }
+                }
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug signing if no key.properties is found
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }

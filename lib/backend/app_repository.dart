@@ -20,6 +20,9 @@ abstract class AppRepository {
   Future<Inventorymodel> updateInventory(String id, InventoryDraft draft);
   Future<void> deleteInventory(String id);
 
+  /// Update only the quantity field for an inventory item.
+  Future<Inventorymodel> updateInventoryQuantity(String id, int quantity);
+
   // Suppliers ---------------------------------------------------------------
   Future<List<Suppliermodel>> fetchSuppliers();
   Future<Suppliermodel> createSupplier(SupplierDraft draft);
@@ -84,6 +87,7 @@ class MockAppRepository implements AppRepository {
       email: draft.email,
       createdAt: now,
       updatedAt: now,
+      expiryDate: draft.expiryDate,
     );
     _inventory.add(item);
     return item;
@@ -106,6 +110,24 @@ class MockAppRepository implements AppRepository {
       contactNum: draft.contactNum,
       email: draft.email,
       updatedAt: DateTime.now(),
+      expiryDate: draft.expiryDate,
+    );
+    _inventory[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Inventorymodel> updateInventoryQuantity(
+    String id,
+    int quantity,
+  ) async {
+    final index = _inventory.indexWhere((element) => element.id == id);
+    if (index == -1) {
+      throw StateError('Inventory item $id not found');
+    }
+    final updated = _inventory[index].copyWith(
+      quantity: quantity,
+      updatedAt: DateTime.now(),
     );
     _inventory[index] = updated;
     return updated;
@@ -126,6 +148,8 @@ class MockAppRepository implements AppRepository {
     final now = DateTime.now();
     final supplier = Suppliermodel(
       id: _generateId('sup'),
+      // Provide a mock sequential supplierSeq for local/testing purposes.
+      supplierSeq: _suppliers.length + 1,
       supplierName: draft.supplierName,
       contactNum: draft.contactNum,
       email: draft.email,
@@ -548,7 +572,7 @@ class MockAppRepository implements AppRepository {
         user: AppUser(
           id: _generateId('usr'),
           username: 'admin',
-          fullName: 'Vendwise Admin',
+          fullName: 'VendWise Admin',
           email: 'admin@vendwise.com',
           role: 'admin',
           isActive: true,

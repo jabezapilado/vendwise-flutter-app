@@ -30,6 +30,20 @@ class _TransactionScreenState extends State<TransactionScreen> {
   List<Productmodel> products = [];
   List<CartItem> cartItems = [];
   final Map<String, ScrollController> _controllers = {};
+  static const String _allItemsLabel = 'All Items';
+  static const List<String> _categoryFilters = <String>[
+    _allItemsLabel,
+    'Drinks',
+    'Foods',
+    'Add-ons',
+  ];
+  static const List<String> _primaryCategoryOrder = <String>[
+    'Drinks',
+    'Foods',
+    'Add-ons',
+  ];
+  static const String _uncategorizedLabel = 'Uncategorized';
+  String _selectedCategory = _allItemsLabel;
 
   Future<void> _loadProducts() async {
     try {
@@ -136,12 +150,38 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final searchTerm = productsearch.text.trim().toLowerCase();
+    final filteredProducts = products.where((product) {
+      final category = _normalizeCategory(product.prodType);
+      final matchesCategory =
+          _selectedCategory == _allItemsLabel || category == _selectedCategory;
+      final matchesSearch = searchTerm.isEmpty
+          ? true
+          : product.productName.toLowerCase().contains(searchTerm);
+      return matchesCategory && matchesSearch;
+    }).toList();
+
     final Map<String, List<Productmodel>> groupedProducts = {};
-    for (final product in products) {
+    for (final product in filteredProducts) {
+      final category = _normalizeCategory(product.prodType);
       groupedProducts
-          .putIfAbsent(product.prodType, () => <Productmodel>[])
+          .putIfAbsent(category, () => <Productmodel>[])
           .add(product);
     }
+
+    final orderedGroupedProducts = <String, List<Productmodel>>{};
+    for (final category in _primaryCategoryOrder) {
+      final items = groupedProducts.remove(category);
+      if (items != null && items.isNotEmpty) {
+        orderedGroupedProducts[category] = items;
+      }
+    }
+    for (final entry in groupedProducts.entries) {
+      orderedGroupedProducts[entry.key] = entry.value;
+    }
+
+    final hasProducts = products.isNotEmpty;
+    final hasMatches = orderedGroupedProducts.isNotEmpty;
 
     return Scaffold(
       appBar: const PrimaryAppBar(
@@ -180,19 +220,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
+              child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (groupedProducts.isEmpty)
-                      _buildEmptyState()
-                    else
-                      productGrid(groupedProducts),
-                    const SizedBox(height: 16),
-                    currentSaleSection(),
-                  ],
-                ),
+                children: [
+                  if (!hasMatches)
+                    _buildEmptyState(hasProducts: hasProducts)
+                  else
+                    productGrid(orderedGroupedProducts),
+                  const SizedBox(height: 16),
+                  currentSaleSection(),
+                ],
               ),
             ),
           ],
@@ -201,7 +238,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({required bool hasProducts}) {
+    final title = hasProducts
+        ? 'No products match your filters'
+        : 'No products available yet';
+    final subtitle = hasProducts
+        ? 'Try a different category or search term.'
+        : 'Add your first product to start a transaction.';
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 48),
@@ -212,18 +255,19 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.shopping_bag_outlined, size: 42, color: Colors.grey),
-          SizedBox(height: 12),
+        children: [
+          const Icon(Icons.shopping_bag_outlined, size: 42, color: Colors.grey),
+          const SizedBox(height: 12),
           Text(
-            'No products available yet',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Add your first product to start a transaction.',
+            title,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey),
           ),
         ],
       ),
@@ -235,6 +279,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       height: 42,
       child: TextField(
         controller: productsearch,
+        onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           isDense: true,
           filled: true,
@@ -269,36 +314,119 @@ class _TransactionScreenState extends State<TransactionScreen> {
   Widget _buildFilterButton() {
     return Align(
       alignment: Alignment.centerLeft,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF146533),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        onPressed: () {
-          AppHaptics.selectionChanged();
-          showQuickMessage(context, 'Category filters coming soon');
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text(
-              'All items',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+      child: Builder(
+        builder: (buttonContext) {
+          return FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF146533),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
               ),
             ),
-            SizedBox(width: 6),
-            Icon(Icons.arrow_drop_down, size: 22, color: Colors.white),
-          ],
-        ),
+            onPressed: () {
+              AppHaptics.selectionChanged();
+              _showCategoryMenu(buttonContext);
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _selectedCategory,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.arrow_drop_down,
+                  size: 22,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
+  }
+
+  Future<void> _showCategoryMenu(BuildContext buttonContext) async {
+    final buttonRenderObject = buttonContext.findRenderObject();
+    if (buttonRenderObject is! RenderBox) {
+      return;
+    }
+    final RenderBox button = buttonRenderObject;
+
+    // Use the buttonContext when looking up the overlay to avoid
+    // referring to a deactivated ancestor.
+    final overlayState = Overlay.of(buttonContext);
+    final overlayRenderObject = overlayState.context.findRenderObject();
+    if (overlayRenderObject is! RenderBox) {
+      return;
+    }
+    final RenderBox overlayBox = overlayRenderObject;
+
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlayBox),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlayBox,
+        ),
+      ),
+      Offset.zero & overlayBox.size,
+    );
+
+    final String? selected = await showMenu<String>(
+      context: context,
+      position: position,
+      items: _categoryFilters
+          .map(
+            (category) => CheckedPopupMenuItem<String>(
+              value: category,
+              checked: category == _selectedCategory,
+              child: Text(category),
+            ),
+          )
+          .toList(),
+    );
+
+    if (!mounted || selected == null || selected == _selectedCategory) {
+      return;
+    }
+
+    AppHaptics.selectionChanged();
+    setState(() {
+      _selectedCategory = selected;
+    });
+  }
+
+  String _normalizeCategory(String rawCategory) {
+    final String trimmed = rawCategory.trim();
+    if (trimmed.isEmpty) {
+      return _uncategorizedLabel;
+    }
+
+    final String lower = trimmed.toLowerCase();
+    if (lower == 'drink' || lower == 'drinks') {
+      return 'Drinks';
+    }
+    if (lower == 'food' || lower == 'foods') {
+      return 'Foods';
+    }
+    if (lower == 'add-ons' ||
+        lower == 'add-on' ||
+        lower == 'addons' ||
+        lower == 'add ons' ||
+        lower == 'addon') {
+      return 'Add-ons';
+    }
+
+    return trimmed;
   }
 
   Widget currentSaleSection() {
@@ -608,7 +736,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       },
     );
 
-    cashController.dispose();
+    // cashController is intentionally not disposed here because it is
+    // still referenced by the dialog's widget tree during lifecycle.
+    // Disposing it here caused "used after disposed" exceptions.
 
     if (receivedCash == null) {
       return;

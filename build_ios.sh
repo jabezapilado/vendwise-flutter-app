@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Vendwise iOS Build Script for iPhone 15 (iOS 18.7)
+# VendWise iOS Build Script for iPhone 15 (iOS 18.7)
 
-echo "🍎 Building Vendwise for iOS..."
+echo "🍎 Building VendWise for iOS..."
 echo "Target: iPhone 15 with iOS 18.7"
 echo ""
 

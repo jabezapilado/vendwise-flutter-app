@@ -9,6 +9,7 @@ class Inventorymodel {
     this.email,
     this.createdAt,
     this.updatedAt,
+    this.expiryDate,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Inventorymodel {
   final String? email;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? expiryDate;
 
   Inventorymodel copyWith({
     String? id,
@@ -31,6 +33,7 @@ class Inventorymodel {
     String? email,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? expiryDate,
   }) {
     return Inventorymodel(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class Inventorymodel {
       email: email ?? this.email,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      expiryDate: expiryDate ?? this.expiryDate,
     );
   }
 
@@ -58,6 +62,7 @@ class Inventorymodel {
       email: map['email'] as String?,
       createdAt: _tryParseDate(map['created_at']),
       updatedAt: _tryParseDate(map['updated_at']),
+      expiryDate: _tryParseDate(map['expiry_date']),
     );
   }
 
@@ -90,6 +95,7 @@ class InventoryDraft {
     required this.quantity,
     this.contactNum,
     this.email,
+    this.expiryDate,
   });
 
   final String productName;
@@ -98,9 +104,10 @@ class InventoryDraft {
   final int quantity;
   final int? contactNum;
   final String? email;
+  final DateTime? expiryDate;
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
+    final map = <String, dynamic>{
       'product_name': productName,
       'supplier_name': supplierName,
       'price': price,
@@ -108,6 +115,12 @@ class InventoryDraft {
       'contact_number': contactNum,
       'email': email,
     }..removeWhere((key, value) => value == null);
+
+    if (expiryDate != null) {
+      map['expiry_date'] = expiryDate!.toIso8601String();
+    }
+
+    return map;
   }
 
   factory InventoryDraft.fromModel(Inventorymodel model) {
@@ -118,6 +131,7 @@ class InventoryDraft {
       quantity: model.quantity,
       contactNum: model.contactNum,
       email: model.email,
+      expiryDate: model.expiryDate,
     );
   }
 }

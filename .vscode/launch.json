@@ -2,14 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Vendwise • iPhone 15 (debug)",
+            "name": "VendWise • iPhone 15 (debug)",
             "request": "launch",
             "type": "dart",
             "program": "lib/main.dart",
             "deviceId": "0F069A04-71C7-4AB6-AF3E-BBE5E2D46160"
         },
         {
-            "name": "Vendwise • iPhone 15 (profile)",
+            "name": "VendWise • iPhone 15 (profile)",
             "request": "launch",
             "type": "dart",
             "program": "lib/main.dart",
@@ -17,7 +17,7 @@
             "deviceId": "0F069A04-71C7-4AB6-AF3E-BBE5E2D46160"
         },
         {
-            "name": "Vendwise • iPhone 15 (release)",
+            "name": "VendWise • iPhone 15 (release)",
             "request": "launch",
             "type": "dart",
             "program": "lib/main.dart",

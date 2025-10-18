@@ -1,0 +1,7 @@
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/vendwise.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/vendwise.png"
+  remove_alpha_ios: true

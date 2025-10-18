@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:vendwise/utils/timezone_utils.dart';
 
 class Transactionmodel {
   const Transactionmodel({
@@ -20,7 +21,8 @@ class Transactionmodel {
   final DateTime? updatedAt;
 
   String get formattedTime {
-    return DateFormat('h:mm a').format(timePurchased);
+    final philippineTime = toPhilippineTime(timePurchased);
+    return DateFormat('h:mm a').format(philippineTime);
   }
 
   factory Transactionmodel.fromMap(Map<String, dynamic> map) {
@@ -54,7 +56,9 @@ class TransactionDraft {
     return <String, dynamic>{
       'customer_name': customerName,
       'item_count': itemCount,
-      'total_amount': totalAmount,
+      // Supabase/PostgREST may reject float strings for integer columns (e.g. "224.0").
+      // Serialize total_amount as an integer (rounded) to match typical DB integer schema.
+      'total_amount': totalAmount.round(),
       'time_purchased': timePurchased.toUtc().toIso8601String(),
     };
   }

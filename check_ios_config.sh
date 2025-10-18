@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# iPhone 15 Configuration Check for Vendwise
+# iPhone 15 Configuration Check for VendWise
 
-echo "🔍 Vendwise iPhone 15 Configuration Check"
+echo "🔍 VendWise iPhone 15 Configuration Check"
 echo "==========================================="
 echo ""
 

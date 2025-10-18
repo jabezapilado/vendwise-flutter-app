@@ -1,4 +1,4 @@
-# Vendwise
+# VendWise
 
 Flutter-based inventory and point-of-sale companion app for Android and iOS.
 

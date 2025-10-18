@@ -21,8 +21,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceMediumController = TextEditingController();
   final TextEditingController _priceLargeController = TextEditingController();
+  // No quantity controller or +/- buttons for Add Product page
 
-  final List<String> _categories = <String>['Drinks', 'Food', 'Add-ons'];
+  final List<String> _categories = <String>['Drinks', 'Foods', 'Add-ons'];
   String? _selectedCategory = 'Drinks';
   String? _pickedFileLabel;
   PlatformFile? _pickedFile;
@@ -288,7 +289,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 },
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
                 ),
               ),
             ),
@@ -372,10 +376,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
               child: AspectRatio(
                 aspectRatio: 4 / 3,
                 child: _pickedFile != null && _pickedFile!.bytes != null
-                    ? Image.memory(_pickedFile!.bytes!, fit: BoxFit.cover)
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          _pickedFile!.bytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
                     : const ProductImage(
                         imageUrl: null,
                         fit: BoxFit.cover,
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
                         placeholderAsset: 'assets/icons/logo.png',
                       ),
               ),
@@ -518,20 +531,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
     required TextInputType keyboardType,
     String? Function(String?)? validator,
   }) {
-    return SizedBox(
-      height: 40,
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          hintText: hintText,
-          border: const OutlineInputBorder(),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: hintText,
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
         ),
-        keyboardType: keyboardType,
-        validator: validator,
+        isDense: false,
       ),
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(fontSize: 15),
     );
   }
 }

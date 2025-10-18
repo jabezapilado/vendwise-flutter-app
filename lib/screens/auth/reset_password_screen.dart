@@ -109,7 +109,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 children: [
                   const Text(
                     'Enter the username or email linked to the account. '
-                    'We\'ll update your Vendwise password immediately.',
+                    'We\'ll update your VendWise password immediately.',
                     style: TextStyle(fontSize: 14, height: 1.4),
                   ),
                   const SizedBox(height: 20),

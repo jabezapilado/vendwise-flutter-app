@@ -20,6 +20,8 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
   late final TextEditingController _quantityController;
   late final TextEditingController _contactController;
   late final TextEditingController _emailController;
+  late final TextEditingController _expiryController;
+  DateTime? _selectedExpiry;
 
   List<Suppliermodel> _suppliers = const <Suppliermodel>[];
   Suppliermodel? _selectedSupplier;
@@ -39,6 +41,12 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
       text: inventory.contactNum?.toString() ?? '',
     );
     _emailController = TextEditingController(text: inventory.email ?? '');
+    _selectedExpiry = inventory.expiryDate;
+    _expiryController = TextEditingController(
+      text: inventory.expiryDate != null
+          ? '${inventory.expiryDate!.day.toString().padLeft(2, '0')}/${inventory.expiryDate!.month.toString().padLeft(2, '0')}/${inventory.expiryDate!.year}'
+          : '',
+    );
     if (inventory.supplierName != null && inventory.supplierName!.isNotEmpty) {
       _selectedSupplier = Suppliermodel(
         id: '',
@@ -57,6 +65,7 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
     _quantityController.dispose();
     _contactController.dispose();
     _emailController.dispose();
+    _expiryController.dispose();
     super.dispose();
   }
 
@@ -129,6 +138,7 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
       email: _emailController.text.trim().isEmpty
           ? null
           : _emailController.text.trim(),
+      expiryDate: _selectedExpiry,
     );
 
     setState(() {
@@ -329,7 +339,9 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
                       (supplier) => DropdownMenuItem<String>(
                         value: supplier.supplierName,
                         child: Text(
-                          supplier.supplierName,
+                          supplier.supplierSeq != null
+                              ? '${supplier.supplierSeq} • ${supplier.supplierName}'
+                              : supplier.supplierName,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
@@ -351,7 +363,13 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
                   });
                   _syncContactDetails();
                 },
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                ),
               ),
             ),
             _buildSectionLabel('Product Name'),
@@ -385,6 +403,8 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
               controller: _quantityController,
               hintText: 'Quantity',
               keyboardType: TextInputType.number,
+              textAlign: TextAlign.left,
+              textAlignVertical: TextAlignVertical.center,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter quantity';
@@ -406,6 +426,52 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
               controller: _emailController,
               hintText: 'Email',
               keyboardType: TextInputType.emailAddress,
+            ),
+            _buildSectionLabel('Expiry Date'),
+            const SizedBox(height: 5),
+            SizedBox(
+              height: 40,
+              child: TextFormField(
+                controller: _expiryController,
+                readOnly: true,
+                decoration: InputDecoration(
+                  hintText: 'dd/mm/yyyy',
+                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                  suffixIcon: _selectedExpiry != null
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() {
+                              _selectedExpiry = null;
+                              _expiryController.text = '';
+                            });
+                          },
+                        )
+                      : null,
+                ),
+                onTap: () async {
+                  final now = DateTime.now();
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedExpiry ?? now,
+                    firstDate: now.subtract(const Duration(days: 3650)),
+                    lastDate: now.add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedExpiry = picked;
+                      _expiryController.text =
+                          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                    });
+                  }
+                },
+                validator: (value) {
+                  // expiry is optional; allow empty
+                  return null;
+                },
+              ),
             ),
             const SizedBox(height: 30),
             Row(
@@ -515,6 +581,8 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
     required String hintText,
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
+    TextAlign textAlign = TextAlign.left,
+    TextAlignVertical? textAlignVertical,
   }) {
     return Column(
       children: [
@@ -523,11 +591,17 @@ class _UpdateInventoryScreenState extends State<UpdateInventoryScreen> {
           height: 40,
           child: TextFormField(
             controller: controller,
+            textAlign: textAlign,
+            textAlignVertical: textAlignVertical ?? TextAlignVertical.center,
             decoration: InputDecoration(
               hintText: hintText,
               border: const OutlineInputBorder(),
               filled: true,
               fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 12,
+              ),
             ),
             validator: validator,
             keyboardType: keyboardType,

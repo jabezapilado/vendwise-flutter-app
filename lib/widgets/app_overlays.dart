@@ -17,8 +17,9 @@ import 'package:vendwise/screens/products/products_screen.dart';
 import 'package:vendwise/screens/dashboard/sales_report.dart';
 import 'package:vendwise/screens/dashboard/transaction_screen.dart';
 import 'package:vendwise/services/app_session.dart';
-import 'package:vendwise/utils/navigation_helpers.dart';
 import 'package:vendwise/utils/app_haptics.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
+import 'package:vendwise/utils/timezone_utils.dart';
 
 /// Identifies the high-level section of the app for navigation purposes.
 enum AppSection { dashboard, inventory, products, transactions, reports }
@@ -232,7 +233,7 @@ class _NotificationsSheet extends StatefulWidget {
 }
 
 class _NotificationsSheetState extends State<_NotificationsSheet> {
-  List<String> _notifications = const [];
+  List<_NotificationItem> _notifications = const [];
   String? _error;
   bool _isLoading = true;
 
@@ -259,19 +260,36 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
 
   void _clearAll() {
     AppHaptics.mediumImpact();
-    setState(() {
-      _notifications = const [];
-    });
-    showQuickMessage(context, 'Notifications cleared');
+    // Persist clearing by marking all current notifications as dismissed.
+    () async {
+      final ids = <String>{};
+      ids.addAll(_notifications.map((n) => n.id));
+      final existing = await _loadDismissedIds();
+      final merged = existing..addAll(ids);
+      await _persistDismissedIds(merged);
+      if (!mounted) return;
+      setState(() {
+        _notifications = const [];
+      });
+      showQuickMessage(context, 'Notifications cleared');
+    }();
   }
 
-  void _dismissAt(int index) {
+  Future<void> _dismissAt(int index) async {
     AppHaptics.selectionChanged();
+    if (index < 0 || index >= _notifications.length) return;
+    final removed = _notifications[index];
+    try {
+      final existing = await _loadDismissedIds();
+      final merged = existing..add(removed.id);
+      await _persistDismissedIds(merged);
+    } catch (_) {
+      // Ignore persistence failures; still remove from UI optimistically.
+    }
+    if (!mounted) return;
     setState(() {
-      final updated = List<String>.of(_notifications);
-      if (index >= 0 && index < updated.length) {
-        updated.removeAt(index);
-      }
+      final updated = List<_NotificationItem>.of(_notifications)
+        ..removeAt(index);
       _notifications = updated;
     });
   }
@@ -356,11 +374,11 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
                     itemCount: notifications.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final message = notifications[index];
+                      final item = notifications[index];
                       return Dismissible(
-                        key: ValueKey('${message.hashCode}-$index'),
+                        key: ValueKey(item.id),
                         direction: DismissDirection.endToStart,
-                        onDismissed: (_) => _dismissAt(index),
+                        onDismissed: (_) async => await _dismissAt(index),
                         background: Container(
                           color: Colors.red.withValues(alpha: 0.1),
                           alignment: Alignment.centerRight,
@@ -370,13 +388,13 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
                         child: ListTile(
                           leading: const Icon(Icons.notifications),
                           title: Text(
-                            message,
+                            item.message,
                             style: const TextStyle(fontSize: 14),
                           ),
                           trailing: IconButton(
                             tooltip: 'Dismiss',
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () => _dismissAt(index),
+                            onPressed: () async => await _dismissAt(index),
                           ),
                         ),
                       );
@@ -391,28 +409,112 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
   }
 }
 
+class _NotificationItem {
+  const _NotificationItem({required this.id, required this.message});
+
+  final String id;
+  final String message;
+}
+
 class _NotificationPayload {
   const _NotificationPayload({required this.messages, required this.error});
 
-  final List<String> messages;
+  final List<_NotificationItem> messages;
   final String? error;
+}
+
+const String _dismissedNotificationsKey = 'dismissed_notifications_v1';
+
+String _computeId(String message) {
+  // Stable identifier for a notification based on its content.
+  // Use hashCode + length to reduce accidental collisions across runs.
+  return '${message.hashCode}_${message.length}';
+}
+
+Future<Set<String>> _loadDismissedIds() async {
+  final prefs = await SharedPreferences.getInstance();
+  final list = prefs.getStringList(_dismissedNotificationsKey) ?? <String>[];
+  return list.toSet();
+}
+
+Future<void> _persistDismissedIds(Set<String> ids) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(_dismissedNotificationsKey, ids.toList());
 }
 
 Future<_NotificationPayload> _loadNotifications() async {
   try {
     final inventory = await appRepository.fetchInventory();
     final transactions = await appRepository.fetchTransactions();
+    // additional sources for notifications
+    final products = await appRepository.fetchProducts();
+    final suppliers = await appRepository.fetchSuppliers();
+    final users = await appRepository.fetchAppUsers();
     final now = DateTime.now();
-    final messages = <String>[];
-
-    messages.addAll(_buildLowStockAlerts(inventory));
-
-    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfDay = startOfPhilippineDay(now);
     final endOfDay = startOfDay.add(const Duration(days: 1));
     final todaysTransactions = transactions.where((txn) {
-      final timestamp = txn.timePurchased;
+      final timestamp = toPhilippineTime(txn.timePurchased);
       return !timestamp.isBefore(startOfDay) && timestamp.isBefore(endOfDay);
     }).toList();
+    final nowPhilippines = toPhilippineTime(now);
+    final messages = <_NotificationItem>[];
+
+    // Inventory summary message (In stock, Low stock, Out of stock, To expire, Expired)
+    const lowStockThreshold = 25;
+    const toExpireDays = 10;
+
+    final expiredCount = inventory.where((inv) {
+      final expiry = inv.expiryDate;
+      if (expiry == null) return false;
+      return toPhilippineTime(expiry).isBefore(nowPhilippines);
+    }).length;
+
+    final outOfStockCount = inventory.where((inv) => inv.quantity <= 0).length;
+
+    final toExpireCount = inventory.where((inv) {
+      final expiry = inv.expiryDate;
+      if (expiry == null) return false;
+      final e = toPhilippineTime(expiry);
+      return !e.isBefore(nowPhilippines) &&
+          e.isBefore(nowPhilippines.add(Duration(days: toExpireDays)));
+    }).length;
+
+    final lowStockCount = inventory.where((inv) {
+      final qty = inv.quantity;
+      return qty > 0 && qty <= lowStockThreshold;
+    }).length;
+
+    final inStockCount = inventory.where((inv) {
+      final qty = inv.quantity;
+      final expiry = inv.expiryDate;
+      final expired =
+          expiry != null && toPhilippineTime(expiry).isBefore(nowPhilippines);
+      return qty > 0 && !expired;
+    }).length;
+
+    messages.add(
+      _NotificationItem(
+        id: _computeId(
+          'inventory_summary|$inStockCount|$lowStockCount|$outOfStockCount|$toExpireCount|$expiredCount',
+        ),
+        message:
+            'Inventory: $inStockCount in stock • $lowStockCount low • $outOfStockCount out • $toExpireCount to expire • $expiredCount expired',
+      ),
+    );
+
+    // Per-item alerts (use stable ids where possible so dismissals persist)
+    messages.addAll(_buildLowStockItems(inventory));
+    messages.addAll(_buildOutOfStockItems(inventory));
+    messages.addAll(_buildToExpireItems(inventory, nowPhilippines, 10));
+    messages.addAll(_buildExpiredItems(inventory, nowPhilippines));
+
+    // Recent product and supplier activity
+    messages.addAll(_buildRecentProductItems(products, nowPhilippines));
+    messages.addAll(_buildRecentSupplierItems(suppliers, nowPhilippines));
+
+    // Recent app user changes (new accounts or updates)
+    messages.addAll(_buildUserAccountItems(users, nowPhilippines));
 
     if (todaysTransactions.isNotEmpty) {
       final totalSales = todaysTransactions.fold<double>(
@@ -421,9 +523,15 @@ Future<_NotificationPayload> _loadNotifications() async {
       );
       final formatter = NumberFormat.currency(symbol: '₱', decimalDigits: 2);
       messages.add(
-        '${todaysTransactions.length} '
-        'transaction${todaysTransactions.length == 1 ? '' : 's'} '
-        'logged today totaling ${formatter.format(totalSales)}.',
+        _NotificationItem(
+          id: _computeId(
+            'transactions_summary|${todaysTransactions.length}|${totalSales.toStringAsFixed(2)}',
+          ),
+          message:
+              '${todaysTransactions.length} '
+              'transaction${todaysTransactions.length == 1 ? '' : 's'} '
+              'logged today totaling ${formatter.format(totalSales)}.',
+        ),
       );
     }
 
@@ -432,7 +540,8 @@ Future<_NotificationPayload> _loadNotifications() async {
       if (timestamp == null) {
         return false;
       }
-      return now.difference(timestamp).inHours <= 24;
+      final restockTime = toPhilippineTime(timestamp);
+      return nowPhilippines.difference(restockTime).inHours <= 24;
     }).toList();
 
     if (recentRestocks.isNotEmpty) {
@@ -441,10 +550,20 @@ Future<_NotificationPayload> _loadNotifications() async {
       final tail = remaining > 0
           ? ' and $remaining other item${remaining > 1 ? 's' : ''}'
           : '';
-      messages.add('Recently updated stock: $sample$tail in the last 24h.');
+      final msg = 'Recently updated stock: $sample$tail in the last 24h.';
+      messages.add(_NotificationItem(id: _computeId(msg), message: msg));
     }
 
-    return _NotificationPayload(messages: messages, error: null);
+    // Filter out dismissed notification ids (persisted in SharedPreferences).
+    try {
+      final dismissed = await _loadDismissedIds();
+      final filtered = messages
+          .where((m) => !dismissed.contains(m.id))
+          .toList();
+      return _NotificationPayload(messages: filtered, error: null);
+    } catch (_) {
+      return _NotificationPayload(messages: messages, error: null);
+    }
   } catch (error, stackTrace) {
     developer.log(
       'Failed to load notifications',
@@ -453,7 +572,7 @@ Future<_NotificationPayload> _loadNotifications() async {
       stackTrace: stackTrace,
     );
     return _NotificationPayload(
-      messages: const <String>[],
+      messages: const <_NotificationItem>[],
       error:
           'Unable to load notifications. Check your connection and try again.',
     );
@@ -490,6 +609,161 @@ Iterable<String> _buildLowStockAlerts(List<Inventorymodel> inventory) {
   });
 }
 
+Iterable<String> _buildOutOfStockAlerts(List<Inventorymodel> inventory) {
+  if (inventory.isEmpty) return const <String>[];
+
+  final outOfStock = inventory.where((item) => item.quantity <= 0).toList()
+    ..sort((a, b) => a.productName.compareTo(b.productName));
+
+  if (outOfStock.isEmpty) return const <String>[];
+
+  return outOfStock.take(5).map((item) {
+    final supplier = item.supplierName != null && item.supplierName!.isNotEmpty
+        ? ' (${item.supplierName})'
+        : '';
+    return 'Out of stock: ${item.productName}$supplier — please restock.';
+  });
+}
+
+Iterable<String> _buildToExpireAlerts(
+  List<Inventorymodel> inventory,
+  DateTime now,
+  int days,
+) {
+  if (inventory.isEmpty) return const <String>[];
+
+  final threshold = now.add(Duration(days: days));
+  final toExpire = inventory.where((item) {
+    final expiry = item.expiryDate;
+    if (expiry == null) return false;
+    final e = toPhilippineTime(expiry);
+    return !e.isBefore(now) && e.isBefore(threshold);
+  }).toList()..sort((a, b) => a.expiryDate!.compareTo(b.expiryDate!));
+
+  if (toExpire.isEmpty) return const <String>[];
+
+  return toExpire.take(5).map((item) {
+    final daysLeft = toPhilippineTime(item.expiryDate!).difference(now).inDays;
+    final supplier = item.supplierName != null && item.supplierName!.isNotEmpty
+        ? ' (${item.supplierName})'
+        : '';
+    return 'Expiring soon: ${item.productName}$supplier expires in $daysLeft day${daysLeft == 1 ? '' : 's'}.';
+  });
+}
+
+Iterable<String> _buildExpiredAlerts(
+  List<Inventorymodel> inventory,
+  DateTime now,
+) {
+  if (inventory.isEmpty) return const <String>[];
+
+  final expired =
+      inventory.where((item) {
+        final expiry = item.expiryDate;
+        if (expiry == null) return false;
+        return toPhilippineTime(expiry).isBefore(now);
+      }).toList()..sort(
+        (a, b) => toPhilippineTime(
+          a.expiryDate!,
+        ).compareTo(toPhilippineTime(b.expiryDate!)),
+      );
+
+  if (expired.isEmpty) return const <String>[];
+
+  return expired.take(5).map((item) {
+    final supplier = item.supplierName != null && item.supplierName!.isNotEmpty
+        ? ' (${item.supplierName})'
+        : '';
+    return 'Expired: ${item.productName}$supplier has expired — remove or mark as unsellable.';
+  });
+}
+
+Iterable<String> _buildRecentProductAlerts(
+  List<dynamic> products,
+  DateTime now,
+) {
+  if (products.isEmpty) return const <String>[];
+
+  final recent = products.where((p) {
+    final created = (p as dynamic).createdAt as DateTime?;
+    final updated = (p as dynamic).updatedAt as DateTime?;
+    if (created != null &&
+        toPhilippineTime(created).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    if (updated != null &&
+        toPhilippineTime(updated).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    return false;
+  }).toList();
+
+  if (recent.isEmpty) return const <String>[];
+
+  return recent.take(5).map((p) {
+    final name = (p as dynamic).productName as String? ?? 'Product';
+    return 'Product updated: $name changed in the last 24h.';
+  });
+}
+
+Iterable<String> _buildRecentSupplierAlerts(
+  List<dynamic> suppliers,
+  DateTime now,
+) {
+  if (suppliers.isEmpty) return const <String>[];
+
+  final recent = suppliers.where((s) {
+    final created = (s as dynamic).createdAt as DateTime?;
+    final updated = (s as dynamic).updatedAt as DateTime?;
+    if (created != null &&
+        toPhilippineTime(created).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    if (updated != null &&
+        toPhilippineTime(updated).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    return false;
+  }).toList();
+
+  if (recent.isEmpty) return const <String>[];
+
+  return recent.take(5).map((s) {
+    final dyn = s as dynamic;
+    final seq = (dyn.supplierSeq as int?) != null
+        ? (dyn.supplierSeq as int)
+        : null;
+    final name = dyn.supplierName as String? ?? 'Supplier';
+    final label = seq != null ? '$seq • $name' : name;
+    return 'Supplier updated: $label changed in the last 24h.';
+  });
+}
+
+Iterable<String> _buildUserAccountAlerts(List<AppUser> users, DateTime now) {
+  if (users.isEmpty) return const <String>[];
+
+  final recent = users.where((u) {
+    final created = u.createdAt;
+    final updated = u.updatedAt;
+    if (created != null &&
+        toPhilippineTime(created).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    if (updated != null &&
+        toPhilippineTime(updated).difference(now).inHours.abs() <= 24) {
+      return true;
+    }
+    return false;
+  }).toList();
+
+  if (recent.isEmpty) return const <String>[];
+
+  return recent.take(5).map((u) {
+    final who = u.fullName ?? u.username;
+    return 'Account activity: $who was created/updated in the last 24h.';
+  });
+}
+
 class _NavigationTile extends StatelessWidget {
   const _NavigationTile({
     required this.label,
@@ -512,4 +786,110 @@ class _NavigationTile extends StatelessWidget {
       onTap: selected ? null : onTap,
     );
   }
+}
+
+// --- Per-entity notification builders (stable ids) -----------------------
+
+List<_NotificationItem> _buildLowStockItems(List<Inventorymodel> inventory) {
+  final items = <_NotificationItem>[];
+  for (final item in _buildLowStockAlerts(inventory)) {
+    // Try to extract product id from the message if present, otherwise fall back to message hash
+    // Our Inventorymodel has an `id` and `productName` so prefer entity-based id when possible
+    final matching = inventory.firstWhere(
+      (inv) => item.contains(inv.productName),
+      orElse: () =>
+          Inventorymodel(id: '', productName: '', price: 0, quantity: 0),
+    );
+    final id = matching.id.isNotEmpty
+        ? 'lowstock:${matching.id}'
+        : _computeId(item);
+    items.add(_NotificationItem(id: id, message: item));
+  }
+  return items;
+}
+
+List<_NotificationItem> _buildOutOfStockItems(List<Inventorymodel> inventory) {
+  return _buildOutOfStockAlerts(inventory).map((m) {
+    final matching = inventory.firstWhere(
+      (inv) => m.contains(inv.productName),
+      orElse: () =>
+          Inventorymodel(id: '', productName: '', price: 0, quantity: 0),
+    );
+    final id = matching.id.isNotEmpty
+        ? 'outofstock:${matching.id}'
+        : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
+}
+
+List<_NotificationItem> _buildToExpireItems(
+  List<Inventorymodel> inventory,
+  DateTime now,
+  int days,
+) {
+  return _buildToExpireAlerts(inventory, now, days).map((m) {
+    final matching = inventory.firstWhere(
+      (inv) => m.contains(inv.productName),
+      orElse: () =>
+          Inventorymodel(id: '', productName: '', price: 0, quantity: 0),
+    );
+    final id = matching.id.isNotEmpty
+        ? 'toexpire:${matching.id}'
+        : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
+}
+
+List<_NotificationItem> _buildExpiredItems(
+  List<Inventorymodel> inventory,
+  DateTime now,
+) {
+  return _buildExpiredAlerts(inventory, now).map((m) {
+    final matching = inventory.firstWhere(
+      (inv) => m.contains(inv.productName),
+      orElse: () =>
+          Inventorymodel(id: '', productName: '', price: 0, quantity: 0),
+    );
+    final id = matching.id.isNotEmpty
+        ? 'expired:${matching.id}'
+        : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
+}
+
+List<_NotificationItem> _buildRecentProductItems(
+  List<dynamic> products,
+  DateTime now,
+) {
+  return _buildRecentProductAlerts(products, now).map((m) {
+    // attempt to extract product name and match a product id if present
+    final nameMatch = RegExp(r'Product updated: (.+) changed').firstMatch(m);
+    final name = nameMatch?.group(1);
+    final id = name != null ? 'product:${name.toLowerCase()}' : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
+}
+
+List<_NotificationItem> _buildRecentSupplierItems(
+  List<dynamic> suppliers,
+  DateTime now,
+) {
+  return _buildRecentSupplierAlerts(suppliers, now).map((m) {
+    final nameMatch = RegExp(r'Supplier updated: (.+) changed').firstMatch(m);
+    final name = nameMatch?.group(1);
+    final id = name != null ? 'supplier:${name.toLowerCase()}' : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
+}
+
+List<_NotificationItem> _buildUserAccountItems(
+  List<AppUser> users,
+  DateTime now,
+) {
+  return _buildUserAccountAlerts(users, now).map((m) {
+    final whoMatch = RegExp(r'Account activity: (.+) was').firstMatch(m);
+    final who = whoMatch?.group(1);
+    final id = who != null ? 'user:${who.toLowerCase()}' : _computeId(m);
+    return _NotificationItem(id: id, message: m);
+  }).toList();
 }

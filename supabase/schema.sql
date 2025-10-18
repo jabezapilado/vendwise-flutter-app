@@ -14,6 +14,7 @@ create table if not exists public.inventory (
   quantity integer default 0,
   contact_number bigint,
   email text,
+  expiry_date timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

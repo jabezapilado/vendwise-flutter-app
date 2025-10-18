@@ -98,7 +98,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   SwitchListTile.adaptive(
                     title: const Text('Share anonymous analytics'),
                     subtitle: const Text(
-                      'Help us improve Vendwise by sharing usage data.',
+                      'Help us improve VendWise by sharing usage data.',
                     ),
                     value: _analyticsEnabled,
                     onChanged: (value) => setState(() {
@@ -111,7 +111,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     leading: const Icon(Icons.lock_reset),
                     title: const Text('Reset password'),
                     subtitle: const Text(
-                      'Update your Vendwise login password.',
+                      'Update your VendWise login password.',
                     ),
                     onTap: () async {
                       AppHaptics.selectionChanged();

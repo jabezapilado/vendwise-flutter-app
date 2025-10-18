@@ -1,0 +1,2 @@
+[info] Constructors for public widgets should have a named 'key' parameter (/Users/jabezapilado_/Downloads/Vendwise projects/Vendwise 2/Vendwise/lib/screens/products/quantity_control.dart:7:9)
+[warning] The value of the field '_searchTerm' isn't used (/Users/jabezapilado_/Downloads/Vendwise projects/Vendwise 2/Vendwise/lib/screens/products/products_screen.dart:31:10)

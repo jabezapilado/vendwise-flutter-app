@@ -30,20 +30,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   String _selectedCategory = 'all';
   String _searchTerm = '';
 
-  List<Productmodel> get _visibleProducts {
-    return product.where((item) {
-      final category = item.prodType.toLowerCase().trim();
-      final matchesCategory =
-          _selectedCategory == 'all' || category == _selectedCategory;
-      final query = _searchTerm.trim().toLowerCase();
-      final matchesSearch =
-          query.isEmpty ||
-          item.productName.toLowerCase().contains(query) ||
-          item.productDesc.toLowerCase().contains(query);
-      return matchesCategory && matchesSearch;
-    }).toList();
-  }
-
   Future<void> _loadProducts() async {
     setState(() {
       _isLoading = true;
@@ -191,28 +177,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pageContent = [
-      const SizedBox(height: 5),
-      GestureDetector(
-        onTap: () {
-          Navigator.of(context).pop();
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.arrow_back_ios_new, color: Color(0xFFADADAD), size: 20),
-            SizedBox(width: 1),
-            Text(
-              "Back",
-              style: TextStyle(
-                color: Color(0xFFADADAD),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                fontFamily: "Inter",
-              ),
-            ),
-          ],
-        ),
-      ),
       const SizedBox(height: 5),
       Padding(
         padding: const EdgeInsets.only(left: 10, right: 10),
@@ -518,21 +482,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
           border: Border.all(color: Colors.black, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            'No products available yet.',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            'No products available.',
+            style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
         ),
       );
     }
+    // Apply search and category filters
+    final filtered = product.where((p) {
+      final matchesCategory =
+          _selectedCategory == 'all' ||
+          p.prodType.toLowerCase().trim() ==
+              _selectedCategory.toLowerCase().trim();
+      final term = _searchTerm.trim().toLowerCase();
+      final matchesSearch =
+          term.isEmpty ||
+          p.productName.toLowerCase().contains(term) ||
+          p.productDesc.toLowerCase().contains(term);
+      return matchesCategory && matchesSearch;
+    }).toList();
 
-    final items = _visibleProducts;
-    if (items.isEmpty) {
+    if (filtered.isEmpty) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -540,14 +512,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
           border: Border.all(color: Colors.black, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            'No products match your filters yet.',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            'No products available.',
+            style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
         ),
       );
@@ -556,9 +524,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
+      itemCount: filtered.length,
       itemBuilder: (context, index) {
-        final currentProduct = items[index];
+        final currentProduct = filtered[index];
         return Card(
           color: const Color(0xFFFFFFFF),
           margin: const EdgeInsets.all(8),
@@ -618,7 +586,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           context,
                           UpdateProductScreen(product: currentProduct),
                         );
-
                         if (refresh == true) {
                           AppHaptics.selectionChanged();
                           await _loadProducts();
@@ -697,4 +664,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       },
     );
   }
+
+  // ...existing code...
 }

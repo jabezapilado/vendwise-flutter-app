@@ -2,6 +2,7 @@ class Suppliermodel {
   const Suppliermodel({
     required this.id,
     required this.supplierName,
+    this.supplierSeq,
     this.contactNum,
     this.email,
     this.createdAt,
@@ -9,6 +10,7 @@ class Suppliermodel {
   });
 
   final String id;
+  final int? supplierSeq;
   final String supplierName;
   final int? contactNum;
   final String? email;
@@ -17,6 +19,7 @@ class Suppliermodel {
 
   Suppliermodel copyWith({
     String? id,
+    int? supplierSeq,
     String? supplierName,
     int? contactNum,
     String? email,
@@ -25,6 +28,7 @@ class Suppliermodel {
   }) {
     return Suppliermodel(
       id: id ?? this.id,
+      supplierSeq: supplierSeq ?? this.supplierSeq,
       supplierName: supplierName ?? this.supplierName,
       contactNum: contactNum ?? this.contactNum,
       email: email ?? this.email,
@@ -36,6 +40,9 @@ class Suppliermodel {
   factory Suppliermodel.fromMap(Map<String, dynamic> map) {
     return Suppliermodel(
       id: map['id']?.toString() ?? '',
+      supplierSeq: map['supplier_seq'] != null
+          ? _parseNum(map['supplier_seq']).toInt()
+          : null,
       supplierName: (map['supplier_name'] ?? '') as String,
       contactNum: map['contact_number'] != null
           ? _parseNum(map['contact_number']).toInt()

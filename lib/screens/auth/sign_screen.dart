@@ -119,7 +119,7 @@ class _SignInScreenState extends State<SignInScreen> {
             key: _formKey,
             child: Column(
               children: [
-                Image.asset('assets/icons/logo.png', width: 200, height: 250),
+                Image.asset('assets/icons/logo.png', width: 300, height: 320),
                 if (_errorMessage != null)
                   Container(
                     margin: const EdgeInsets.symmetric(

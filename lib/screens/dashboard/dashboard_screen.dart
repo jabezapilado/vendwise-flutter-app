@@ -1,13 +1,17 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:vendwise/backend/app_repository.dart';
 import 'package:vendwise/models/inventorymodel.dart';
 import 'package:vendwise/models/transactionmodel.dart';
+import 'package:vendwise/utils/timezone_utils.dart';
 import 'package:vendwise/widgets/app_navigation_drawer.dart';
 import 'package:vendwise/widgets/app_overlays.dart';
 import 'package:vendwise/widgets/primary_app_bar.dart';
+import 'package:vendwise/screens/inventory/inventory_screen.dart';
+import 'package:vendwise/utils/navigation_helpers.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -27,36 +31,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkConnectivityAndNotify();
-    });
+    // Load data first, then run connectivity checks on success only. If the
+    // initial data load fails (for example during an auth handoff after
+    // password reset), skip the connectivity check to avoid a false offline
+    // dialog.
+    _loadData()
+        .then((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _checkConnectivityAndNotify();
+          });
+        })
+        .catchError((error) {
+          // Intentionally ignore: connectivity check is deferred because the
+          // app likely encountered an auth or backend error which should surface
+          // as an auth error instead of an offline dialog.
+        });
   }
 
   Future<void> _checkConnectivityAndNotify() async {
-    final List<ConnectivityResult> connectivityResults = await Connectivity()
+    // Check the platform connectivity first
+    final dynamic connectivityResultRaw = await Connectivity()
         .checkConnectivity();
-    final bool hasNetworkInterface = connectivityResults.any(
-      (ConnectivityResult result) => result != ConnectivityResult.none,
-    );
+    bool hasNetworkInterface = false;
+    if (connectivityResultRaw is ConnectivityResult) {
+      hasNetworkInterface = connectivityResultRaw != ConnectivityResult.none;
+    } else if (connectivityResultRaw is List<ConnectivityResult>) {
+      hasNetworkInterface = connectivityResultRaw.any(
+        (ConnectivityResult r) => r != ConnectivityResult.none,
+      );
+    } else {
+      // Fallback: assume there is a network interface and rely on DNS tests
+      hasNetworkInterface = true;
+    }
+
+    // Perform a defensive internet lookup with retries/timeouts so we don't
+    // surface a false "No Internet" message immediately after navigation or
+    // transient DNS hiccups.
     final bool hasInternet = hasNetworkInterface && await _hasInternetAccess();
 
     if (!hasInternet && mounted && !_offlineDialogShown) {
-      _offlineDialogShown = true;
-      _showOfflineDialog();
+      // brief delay then re-check once to avoid flapping caused by quick
+      // transient failures that often happen around navigation/auth flows.
+      await Future.delayed(const Duration(milliseconds: 500));
+      final bool recheck = await _hasInternetAccess();
+      if (!recheck) {
+        _offlineDialogShown = true;
+        _showOfflineDialog();
+      }
     }
   }
 
   Future<bool> _hasInternetAccess() async {
-    try {
-      final List<InternetAddress> lookupResult = await InternetAddress.lookup(
-        'example.com',
-      );
-      return lookupResult.isNotEmpty &&
-          lookupResult.first.rawAddress.isNotEmpty;
-    } on SocketException {
-      return false;
+    // Try a couple of well-known hosts with a short timeout. Some networks
+    // block specific hosts, so try a small list before concluding we're
+    // offline.
+    const hosts = ['example.com', 'google.com'];
+    for (final host in hosts) {
+      try {
+        final lookupResult = await InternetAddress.lookup(
+          host,
+        ).timeout(const Duration(seconds: 3));
+        if (lookupResult.isNotEmpty &&
+            lookupResult.first.rawAddress.isNotEmpty) {
+          return true;
+        }
+      } on SocketException {
+        // try next host
+      } on TimeoutException {
+        // try next host
+      } catch (_) {
+        // ignore and try next
+      }
     }
+    return false;
   }
 
   void _showOfflineDialog() {
@@ -90,10 +137,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
 
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfDay = startOfPhilippineDay(now);
     final endOfDay = startOfDay.add(const Duration(days: 1));
     final todaysTransactions = fetchedTransactions.where((txn) {
-      final timestamp = txn.timePurchased;
+      final timestamp = toPhilippineTime(txn.timePurchased);
       return !timestamp.isBefore(startOfDay) && timestamp.isBefore(endOfDay);
     }).toList();
 
@@ -372,6 +419,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   SizedBox inventorySummary(BuildContext context) {
+    // Compute inventory summary counts using Philippine time and requested thresholds
+    final nowPhilippine = toPhilippineTime(DateTime.now());
+    // Thresholds
+    const lowStockThreshold = 25;
+    const toExpireDays = 10;
+
+    final expiredCount = inventory.where((inv) {
+      final expiry = inv.expiryDate;
+      if (expiry == null) return false;
+      final e = toPhilippineTime(expiry);
+      return e.isBefore(nowPhilippine);
+    }).length;
+
+    final outOfStockCount = inventory.where((inv) => inv.quantity <= 0).length;
+
+    final toExpireCount = inventory.where((inv) {
+      final expiry = inv.expiryDate;
+      if (expiry == null) return false;
+      final e = toPhilippineTime(expiry);
+      return !e.isBefore(nowPhilippine) &&
+          e.isBefore(nowPhilippine.add(Duration(days: toExpireDays)));
+    }).length;
+
+    final lowStockCount = inventory.where((inv) {
+      final qty = inv.quantity;
+      return qty > 0 && qty <= lowStockThreshold;
+    }).length;
+
+    final inStockCount = inventory.where((inv) {
+      final qty = inv.quantity;
+      final expiry = inv.expiryDate;
+      final expired =
+          expiry != null && toPhilippineTime(expiry).isBefore(nowPhilippine);
+      return qty > 0 && !expired;
+    }).length;
+
     return SizedBox(
       width: MediaQuery.of(context).size.width * 0.9,
       child: Container(
@@ -392,112 +475,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 2, right: 2),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory,
-                          color: Colors.black,
-                          size: 30,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          inventory.length.toString(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text("In stock", style: TextStyle(fontSize: 12)),
-                      ],
+                  GestureDetector(
+                    onTap: () => pushWithSlide<void>(
+                      context,
+                      const InventoryScreen(initialFilter: InventoryFilter.all),
+                    ),
+                    child: _buildSummaryColumn(
+                      Icons.inventory,
+                      inStockCount.toString(),
+                      'In stock',
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 2, right: 2),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory,
-                          color: Colors.black,
-                          size: 30,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text("Low stock", style: TextStyle(fontSize: 12)),
-                      ],
+                  // single Low stock column (the tappable one follows)
+                  GestureDetector(
+                    onTap: () => pushWithSlide<void>(
+                      context,
+                      const InventoryScreen(
+                        initialFilter: InventoryFilter.lowStock,
+                      ),
+                    ),
+                    child: _buildSummaryColumn(
+                      Icons.inventory,
+                      lowStockCount.toString(),
+                      'Low stock',
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 2, right: 2),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory,
-                          color: Colors.black,
-                          size: 30,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text(
-                          "Out of stock",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ],
+                  GestureDetector(
+                    onTap: () => pushWithSlide<void>(
+                      context,
+                      const InventoryScreen(
+                        initialFilter: InventoryFilter.outOfStock,
+                      ),
+                    ),
+                    child: _buildSummaryColumn(
+                      Icons.inventory,
+                      outOfStockCount.toString(),
+                      'Out of stock',
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 2, right: 2),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory,
-                          color: Colors.black,
-                          size: 30,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text("To expire", style: TextStyle(fontSize: 12)),
-                      ],
+                  GestureDetector(
+                    onTap: () => pushWithSlide<void>(
+                      context,
+                      const InventoryScreen(
+                        initialFilter: InventoryFilter.toExpire,
+                      ),
+                    ),
+                    child: _buildSummaryColumn(
+                      Icons.inventory,
+                      toExpireCount.toString(),
+                      'To expire',
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 2, right: 2),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.inventory,
-                          color: Colors.black,
-                          size: 30,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text("Expired", style: TextStyle(fontSize: 12)),
-                      ],
+                  GestureDetector(
+                    onTap: () => pushWithSlide<void>(
+                      context,
+                      const InventoryScreen(
+                        initialFilter: InventoryFilter.expired,
+                      ),
+                    ),
+                    child: _buildSummaryColumn(
+                      Icons.inventory,
+                      expiredCount.toString(),
+                      'Expired',
                     ),
                   ),
                 ],
@@ -505,6 +544,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // small helper to keep the summary row compact
+  Widget _buildSummaryColumn(IconData icon, String count, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, right: 2),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.black, size: 30),
+          const SizedBox(height: 4),
+          Text(
+            count,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }
@@ -603,81 +660,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          ...List.generate(
-            transaction.length,
-            (index) => TableRow(
-              children: [
-                TableCell(
-                  verticalAlignment: TableCellVerticalAlignment.middle,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        transaction[index].customerName,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontFamily: "Inter",
-                          fontSize: 12.0,
+          ...transaction
+              .take(10)
+              .map(
+                (txn) => TableRow(
+                  children: [
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            txn.customerName,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontFamily: "Inter",
+                              fontSize: 12.0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                TableCell(
-                  verticalAlignment: TableCellVerticalAlignment.middle,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        transaction[index].itemCount.toString(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontFamily: "Inter",
-                          fontSize: 12.0,
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            txn.itemCount.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontFamily: "Inter",
+                              fontSize: 12.0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                TableCell(
-                  verticalAlignment: TableCellVerticalAlignment.middle,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        "₱${transaction[index].totalAmount.toStringAsFixed(2)} ",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontFamily: "Inter",
-                          fontSize: 12.0,
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            "₱${txn.totalAmount.toStringAsFixed(2)} ",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontFamily: "Inter",
+                              fontSize: 12.0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                TableCell(
-                  verticalAlignment: TableCellVerticalAlignment.middle,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        transaction[index].formattedTime,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontFamily: "Inter",
-                          fontSize: 12.0,
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            txn.formattedTime,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontFamily: "Inter",
+                              fontSize: 12.0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
         ],
       ),
     );

@@ -1,6 +1,6 @@
 {
-    "name": "vendwise",
-    "short_name": "vendwise",
+    "name": "VendWise",
+    "short_name": "VendWise",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

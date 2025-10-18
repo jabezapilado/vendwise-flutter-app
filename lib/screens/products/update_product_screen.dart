@@ -26,7 +26,7 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
   late final TextEditingController _priceLargeController;
   late final TextEditingController _descriptionController;
 
-  final List<String> _productTypes = <String>['Drinks', 'Food', 'Add-ons'];
+  final List<String> _productTypes = <String>['Drinks', 'Foods', 'Add-ons'];
 
   String? _selectedType;
   String? _selectedFileName;
@@ -437,7 +437,13 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
                   }
                   return null;
                 },
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                ),
               ),
             ),
             _buildSectionLabel('Product Name'),
@@ -508,10 +514,21 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
               child: AspectRatio(
                 aspectRatio: 4 / 3,
                 child: _pickedFile != null && _pickedFile!.bytes != null
-                    ? Image.memory(_pickedFile!.bytes!, fit: BoxFit.cover)
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          _pickedFile!.bytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
                     : ProductImage(
                         imageUrl: _imageUrl,
                         fit: BoxFit.cover,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(12),
+                        ),
                         placeholderAsset: 'assets/icons/logo.png',
                       ),
               ),
@@ -680,6 +697,10 @@ class _UpdateProductScreenState extends State<UpdateProductScreen> {
               border: const OutlineInputBorder(),
               filled: true,
               fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 12,
+              ),
             ),
             validator: validator,
             keyboardType: keyboardType,

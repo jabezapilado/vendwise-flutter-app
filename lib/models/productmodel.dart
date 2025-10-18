@@ -9,6 +9,7 @@ class Productmodel {
     this.prodImage,
     this.createdAt,
     this.updatedAt,
+    this.quantity = 0,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Productmodel {
   final String? prodImage;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final int quantity;
 
   Productmodel copyWith({
     String? id,
@@ -31,6 +33,7 @@ class Productmodel {
     String? prodImage,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? quantity,
   }) {
     return Productmodel(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class Productmodel {
       prodImage: prodImage ?? this.prodImage,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      quantity: quantity ?? this.quantity,
     );
   }
 
